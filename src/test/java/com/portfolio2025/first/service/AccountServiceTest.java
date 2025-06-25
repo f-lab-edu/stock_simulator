@@ -15,7 +15,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-@ExtendWith(MockitoExtension.class)
+@ExtendWith(MockitoExtension.class) // Mockito 활용한 테스트 환경
 class AccountServiceTest {
 
     @Mock
@@ -26,7 +26,8 @@ class AccountServiceTest {
 
     private User user;
 
-    @BeforeEach
+    // User 생성 관련 테스트 코드
+    @BeforeEach()
     void setUp() {
         user = User.builder()
                 .name("홍길동")

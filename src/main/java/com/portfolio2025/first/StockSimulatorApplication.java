@@ -1,6 +1,5 @@
 package com.portfolio2025.first;
 
-import com.portfolio2025.first.domain.Member;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 

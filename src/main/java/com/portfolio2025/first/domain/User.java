@@ -5,40 +5,80 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
-import java.util.List;
+import lombok.AccessLevel;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
-@Entity
 @Table(name = "users")
+@Entity
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED) // JPA 기본 생성자
 public class User {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Long balance; // 잔고
+    @Column(nullable = false, length = 50)
+    private String name;
+    @Column(name = "user_id", nullable = false, length = 30)
+    private String userId;
 
     private String location;
-    private String name;
+    @Column(name = "phone_number")
     private String phoneNumber;
     private String email;
-    private String userId; // 사용자 아이디
 
+
+    private Long balance;
+
+    @Column(name = "created_at")
     private LocalDateTime createdAt;
+    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    @OneToMany(mappedBy = "user")
-    private List<Account> accounts;
+    @Builder
+    public User(String name, String location, String phoneNumber, String email, String userId) {
+        if (name == null || userId == null) {
+            throw new IllegalArgumentException("이름과 아이디는 필수입니다.");
+        }
 
-    @OneToMany(mappedBy = "user")
-    private List<Portfolio> portfolios;
+        this.name = name;
+        this.location = location;
+        this.phoneNumber = phoneNumber;
+        this.email = email;
+        this.userId = userId;
+        this.balance = 0L;
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+    }
 
-    @OneToMany(mappedBy = "user")
-    private List<Order> orders;
 
-    public Long getId() {
-        return id;
+    public void updateContact(String phoneNumber, String email) {
+        this.phoneNumber = phoneNumber;
+        this.email = email;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void updateLocation(String location) {
+        this.location = location;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void chargeBalance(Long amount) {
+        this.balance += amount;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void deductBalance(Long amount) {
+        if (this.balance < amount) {
+            throw new IllegalArgumentException("잔액이 부족합니다.");
+        }
+        this.balance -= amount;
+        this.updatedAt = LocalDateTime.now();
     }
 }
 

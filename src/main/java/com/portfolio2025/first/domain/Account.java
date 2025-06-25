@@ -10,9 +10,15 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
+import lombok.AccessLevel;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "accounts")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Account {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -43,4 +49,22 @@ public class Account {
 
     @Column(name = "user_name")
     private String userName;
+
+    @Builder
+    public Account(User user, String bankName, String accountNumber, String userName) {
+        if (user == null || bankName == null || accountNumber == null) {
+            throw new IllegalArgumentException("사용자, 은행명, 계좌번호는 필수입니다.");
+        }
+        // input
+        this.user = user;
+        this.bankName = bankName;
+        this.accountNumber = accountNumber;
+        this.userName = userName;
+
+        // Initialization
+        this.createdAt = LocalDateTime.now();
+        this.isActive = true;
+        this.availableCash = 1000_0000_0000L;
+    }
+
 }

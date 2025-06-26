@@ -1,6 +1,7 @@
 package com.portfolio2025.first.domain;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -32,8 +33,8 @@ public class User {
     private String phoneNumber;
     private String email;
 
-
-    private Long balance;
+    @Embedded
+    private Money balance;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
@@ -51,7 +52,7 @@ public class User {
         this.phoneNumber = phoneNumber;
         this.email = email;
         this.userId = userId;
-        this.balance = 0L;
+        this.balance = new Money(0L);
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
     }
@@ -68,17 +69,22 @@ public class User {
         this.updatedAt = LocalDateTime.now();
     }
 
-    public void chargeBalance(Long amount) {
-        this.balance += amount;
+    public void chargeBalance(Money money) {
+        this.balance = this.balance.plus(money);
         this.updatedAt = LocalDateTime.now();
     }
 
-    public void deductBalance(Long amount) {
-        if (this.balance < amount) {
-            throw new IllegalArgumentException("잔액이 부족합니다.");
-        }
-        this.balance -= amount;
+    public void deductBalance(Money money) {
+        this.balance = this.balance.minus(money);
         this.updatedAt = LocalDateTime.now();
+    }
+
+    public void deposit(Money money) {
+        this.balance = balance.plus(money);
+    }
+
+    public void withdraw(Money money) {
+        this.balance = balance.minus(money);
     }
 }
 

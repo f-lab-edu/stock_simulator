@@ -1,6 +1,7 @@
 package com.portfolio2025.first.domain;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -44,8 +45,9 @@ public class Account {
     @Column(name = "is_active", nullable = false)
     private Boolean isActive;
 
+    @Embedded
     @Column(name = "available_cash", nullable = false)
-    private Long availableCash;
+    private Money availableCash;
 
     @Column(name = "user_name")
     private String userName;
@@ -64,7 +66,14 @@ public class Account {
         // Initialization
         this.createdAt = LocalDateTime.now();
         this.isActive = true;
-        this.availableCash = 1000_0000_0000L;
+        this.availableCash = new Money(1000_0000_0000L);
     }
 
+    public void withdraw(Money money) {
+        this.availableCash = availableCash.minus(money);
+    }
+
+    public void deposit(Money money) {
+        this.availableCash = availableCash.plus(money);
+    }
 }

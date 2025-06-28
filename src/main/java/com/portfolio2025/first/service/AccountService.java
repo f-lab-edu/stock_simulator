@@ -40,8 +40,7 @@ public class AccountService {
 
         return accountRepository.save(account);
     }
-
-
+    
     // username(String)으로 Account 조회
     public List<Account> getAccountsByUsername(String username) {
         return accountRepository.findByUser(username);

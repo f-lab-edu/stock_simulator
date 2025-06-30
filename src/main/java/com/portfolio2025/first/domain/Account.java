@@ -76,4 +76,8 @@ public class Account {
     public void deposit(Money money) {
         this.availableCash = availableCash.plus(money);
     }
+
+    public boolean isLowerThan(Money money) {
+        return (availableCash.isLowerThan(money)) ? true : false;
+    }
 }

@@ -20,9 +20,12 @@ import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "orders")
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Order {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -56,5 +59,9 @@ public class Order {
     // cascade?? orphanRemoval???
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<StockOrder> stockOrders = new ArrayList<>();
+
+    public static Order createBuyOrder(User user, Long totalPrice) {
+        return null;
+    }
 }
 

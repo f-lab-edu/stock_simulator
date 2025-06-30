@@ -13,6 +13,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
+import lombok.Builder;
 
 @Entity
 @Table(name = "stock_orders")
@@ -62,5 +63,39 @@ public class StockOrder {
 
     @Column(name = "stock_name")
     private String stockName;
+
+    @Builder
+    private StockOrder(Long id, Order order, Stock stock, Long executedPrice, Long executedQuantity,
+                      LocalDateTime executedAt, Long orderPrice, Long orderQuantity, LocalDateTime createdAt,
+                      LocalDateTime updatedAt, StockOrderStatus stockOrderStatus, Long stockPrice,
+                      String stockName) {
+        this.id = id;
+        this.order = order;
+        this.stock = stock;
+        this.executedPrice = executedPrice;
+        this.executedQuantity = executedQuantity;
+        this.executedAt = executedAt;
+        this.orderPrice = orderPrice;
+        this.orderQuantity = orderQuantity;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+        this.stockOrderStatus = stockOrderStatus;
+        this.stockPrice = stockPrice;
+        this.stockName = stockName;
+    }
+
+    public static StockOrder create(Order order, Stock stock, Long executedQuantity, Long executedPrice) {
+        return StockOrder.builder()
+                .order(order)
+                .stock(stock)
+                .orderPrice(executedPrice)
+                .orderQuantity(executedQuantity)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .stockOrderStatus(StockOrderStatus.PENDING)
+                .stockPrice(stock.getStockPrice())
+                .stockName(stock.getStockName())
+                .build();
+    }
 }
 

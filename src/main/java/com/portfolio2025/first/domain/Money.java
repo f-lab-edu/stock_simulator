@@ -2,15 +2,15 @@ package com.portfolio2025.first.domain;
 
 import jakarta.persistence.Embeddable;
 import java.util.Objects;
+import lombok.AccessLevel;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Embeddable
 @Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Money {
-
     private Long amount;
-
-    protected Money() { }  // JPA 기본 생성자
 
     public Money(Long amount) {
         if (amount == null || amount < 0) {
@@ -30,6 +30,14 @@ public class Money {
         return new Money(this.amount - other.amount);
     }
 
+    public boolean isLowerThan(Money money) {
+        return (this.amount < money.amount);
+    }
+
+    public boolean isHigherThan(Money money) {
+        return (this.amount > money.amount);
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -47,4 +55,6 @@ public class Money {
     public String toString() {
         return String.valueOf(amount);
     }
+
+
 }

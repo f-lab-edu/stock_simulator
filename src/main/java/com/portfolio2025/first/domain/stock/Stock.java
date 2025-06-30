@@ -13,9 +13,11 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import java.util.ArrayList;
 import java.util.List;
+import lombok.Getter;
 
 @Entity
 @Table(name = "stocks")
+@Getter
 public class Stock {
 
     @Id
@@ -43,5 +45,13 @@ public class Stock {
     // 📦 (선택) 주문 내역 연관
     @OneToMany(mappedBy = "stock")
     private List<StockOrder> stockOrders = new ArrayList<>();
+
+    public boolean hasLowerQuantityThan(Long desiredQuantity) {
+        return (availableQuantity < desiredQuantity) ? true : false;
+    }
+
+    public void decreaseQuantity(Long availableQuantity) {
+        this.availableQuantity = this.availableQuantity - availableQuantity;
+    }
 }
 

@@ -57,7 +57,6 @@ public class User {
         this.updatedAt = LocalDateTime.now();
     }
 
-
     public void updateContact(String phoneNumber, String email) {
         this.phoneNumber = phoneNumber;
         this.email = email;
@@ -85,6 +84,10 @@ public class User {
 
     public void withdraw(Money money) {
         this.balance = balance.minus(money);
+    }
+
+    public boolean isBalanceInsufficient(Money money) {
+        return (balance.isLowerThan(money));
     }
 }
 

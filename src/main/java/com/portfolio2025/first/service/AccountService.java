@@ -43,7 +43,7 @@ public class AccountService {
     
     // username(String)으로 Account 조회
     public List<Account> getAccountsByUsername(String username) {
-        return accountRepository.findByUser(username);
+        return accountRepository.findByUserName(username);
     }
 
     // Account -> User

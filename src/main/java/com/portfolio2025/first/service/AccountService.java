@@ -46,11 +46,10 @@ public class AccountService {
         return accountRepository.findByUser(username);
     }
 
-    // 입금
-    // Transaction 단위에서 진행되어야 함
+    // Account -> User
     @Transactional
-    public void deposit(String accountNumber, Money money) {
-        Account account = accountRepository.findByAccountNumber(accountNumber)
+    public void transferFromAccountToUser(String accountNumber, Money money) {
+        Account account = accountRepository.findByAccountNumberWithLock(accountNumber)
                 .orElseThrow(() -> new IllegalArgumentException("Account not found"));
         User user = account.getUser();
 
@@ -58,11 +57,10 @@ public class AccountService {
         user.deposit(money);
     }
 
-    // 출금
-    // Transaction 단위에서 진행되어야 함
+    // User -> Account
     @Transactional
-    public void withdraw(String accountNumber, Money money) {
-        Account account = accountRepository.findByAccountNumber(accountNumber)
+    public void transferFromUserToAccount(String accountNumber, Money money) {
+        Account account = accountRepository.findByAccountNumberWithLock(accountNumber)
                 .orElseThrow(() -> new IllegalArgumentException("Account not found"));
         User user = account.getUser();
 

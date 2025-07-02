@@ -9,7 +9,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.portfolio2025.first.domain.Account;
-import com.portfolio2025.first.domain.Money;
+import com.portfolio2025.first.domain.vo.Money;
 import com.portfolio2025.first.domain.User;
 import com.portfolio2025.first.repository.AccountRepository;
 import com.portfolio2025.first.repository.UserRepository;
@@ -129,8 +129,8 @@ class AccountServiceTest {
         accountService.transferFromAccountToUser("123-456-7890", depositMoney);
 
         // Then
-        assertEquals(99_999_999_000L, account.getAvailableCash().getAmount());
-        assertEquals(1000L, user.getBalance().getAmount());
+        assertEquals(99_999_999_000L, account.getAvailableCash().getMoneyValue());
+        assertEquals(1000L, user.getBalance().getMoneyValue());
 
         verify(accountRepository, times(1)).findByAccountNumber("123-456-7890");
     }
@@ -161,8 +161,8 @@ class AccountServiceTest {
         accountService.transferFromUserToAccount("123-456-7890", withdrawAmount);
 
         // Then
-        assertEquals(100_000_002_000L, account.getAvailableCash().getAmount());
-        assertEquals(3000L, user.getBalance().getAmount());
+        assertEquals(100_000_002_000L, account.getAvailableCash().getMoneyValue());
+        assertEquals(3000L, user.getBalance().getMoneyValue());
 
         verify(accountRepository, times(1)).findByAccountNumber("123-456-7890");
     }

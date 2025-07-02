@@ -1,5 +1,6 @@
 package com.portfolio2025.first.domain;
 
+import com.portfolio2025.first.domain.vo.Money;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
@@ -88,6 +89,12 @@ public class User {
 
     public boolean isBalanceInsufficient(Money money) {
         return (balance.isLowerThan(money));
+    }
+
+    public void validateSufficientBalance(Money money) {
+        if (isBalanceInsufficient(money)) {
+            throw new IllegalArgumentException("Insufficient account balance");
+        }
     }
 }
 

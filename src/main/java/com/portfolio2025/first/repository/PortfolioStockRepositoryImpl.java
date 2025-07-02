@@ -6,7 +6,9 @@ import com.portfolio2025.first.domain.stock.Stock;
 import jakarta.persistence.EntityManager;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.stereotype.Repository;
 
+@Repository
 public class PortfolioStockRepositoryImpl extends BaseRepositoryImpl <PortfolioStock, Long> implements PortfolioStockRepository {
     public PortfolioStockRepositoryImpl(EntityManager em) {
         super(em, PortfolioStock.class);

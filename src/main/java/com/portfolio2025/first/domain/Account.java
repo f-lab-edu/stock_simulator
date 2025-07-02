@@ -1,5 +1,6 @@
 package com.portfolio2025.first.domain;
 
+import com.portfolio2025.first.domain.vo.Money;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
@@ -25,7 +26,6 @@ public class Account {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // 🔗 User 참조 (ManyToOne) - 지연 로딩으로 (실제 객체를 사용할 때 조회하겠다는 의미)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
@@ -66,7 +66,7 @@ public class Account {
         // Initialization
         this.createdAt = LocalDateTime.now();
         this.isActive = true;
-        this.availableCash = new Money(1000_0000_0000L);
+        this.availableCash = new Money(10_000_000L); // 천 만원
     }
 
     public void withdraw(Money money) {

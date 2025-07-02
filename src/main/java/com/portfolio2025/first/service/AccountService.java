@@ -1,7 +1,7 @@
 package com.portfolio2025.first.service;
 
 import com.portfolio2025.first.domain.Account;
-import com.portfolio2025.first.domain.Money;
+import com.portfolio2025.first.domain.vo.Money;
 import com.portfolio2025.first.domain.User;
 import com.portfolio2025.first.repository.AccountRepository;
 import java.util.List;

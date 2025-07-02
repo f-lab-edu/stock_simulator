@@ -1,60 +1,48 @@
-package com.portfolio2025.first.domain;
+package com.portfolio2025.first.domain.vo;
 
 import jakarta.persistence.Embeddable;
 import java.util.Objects;
 import lombok.AccessLevel;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Embeddable
 @Getter
+@EqualsAndHashCode
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Money {
-    private Long amount;
+    private Long moneyValue;
 
     public Money(Long amount) {
         if (amount == null || amount < 0) {
             throw new IllegalArgumentException("금액은 0 이상이어야 합니다.");
         }
-        this.amount = amount;
+        this.moneyValue = amount;
     }
 
     public Money plus(Money other) {
-        return new Money(this.amount + other.amount);
+        return new Money(this.moneyValue + other.moneyValue);
     }
 
     public Money minus(Money other) {
-        if (this.amount < other.amount) {
+        if (isLowerThan(other)) {
             throw new IllegalArgumentException("잔액이 부족합니다");
         }
-        return new Money(this.amount - other.amount);
+        return new Money(this.moneyValue - other.moneyValue);
     }
 
     public boolean isLowerThan(Money money) {
-        return (this.amount < money.amount);
+        return (this.moneyValue < money.moneyValue);
     }
 
     public boolean isHigherThan(Money money) {
-        return (this.amount > money.amount);
+        return (this.moneyValue > money.moneyValue);
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof Money)) return false;
-        Money money = (Money) o;
-        return Objects.equals(amount, money.amount);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(amount);
-    }
 
     @Override
     public String toString() {
-        return String.valueOf(amount);
+        return String.valueOf(moneyValue);
     }
-
-
 }

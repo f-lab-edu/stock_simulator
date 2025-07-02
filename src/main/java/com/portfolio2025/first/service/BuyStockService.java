@@ -26,31 +26,22 @@ public class BuyStockService
     private final OrderRepository orderRepository;
     private final StockOrderRepository stockOrderRepository;
 
-    /** 단일 매수 주문 넣기 **/
+    /** 단일 매수 주문 전체 로직 **/
     @Transactional
     public void placeSingleBuyOrder(StockOrderRequestDTO stockOrderRequestDTO) {
-        // 1. 조회
+        // 1. 조회 + VO
         User user = findUserWithLock(stockOrderRequestDTO.getUserId());
         Stock stock = findStockByStockCode(stockOrderRequestDTO.getStockCode());
-        Long requestedQuantity = stockOrderRequestDTO.getRequestedQuantity();
-        Long requestedPrice = stockOrderRequestDTO.getRequestedPrice();
+        Money totalPriceVO = calculateTotalPrice(stockOrderRequestDTO);
+        Quantity totalQuantityVO = new Quantity(stockOrderRequestDTO.getRequestedQuantity());
 
         // 2. 도메인 관련 검증 진행
-        Money totalPriceVO = new Money(requestedQuantity * requestedPrice);
-        Quantity totalQuantityVO = new Quantity(requestedQuantity);
-        user.validateSufficientBalance(totalPriceVO);
-        stock.validateSufficientQuantity(totalQuantityVO);
-
+        validateOrderConditions(user, stock, totalPriceVO, totalQuantityVO);
         // 3. 사용자 금액 차감
-        user.withdraw(totalPriceVO);
-
+        deductUserBalance(user, totalPriceVO);
         // 4. Order 및 StockOrder 생성 및 저장
         saveSingleBuyOrder(totalQuantityVO, totalPriceVO, user, stock);
     }
-
-    // Bulk API도 지원해야 함
-
-
 
     /** 락 + userId로 조회를 진행합니다 **/
     private User findUserWithLock(Long userId) {
@@ -73,6 +64,23 @@ public class BuyStockService
         return stock;
     }
 
+    /** 매수 총 금액을 구합니다 **/
+    private Money calculateTotalPrice(StockOrderRequestDTO stockOrderRequestDTO) {
+        return new Money(stockOrderRequestDTO.getRequestedPrice() * stockOrderRequestDTO.getRequestedQuantity());
+    }
+
+    /** Domain Validation **/
+    private void validateOrderConditions(User user, Stock stock, Money totalPriceVO, Quantity totalQuantityVO) {
+        user.validateSufficientBalance(totalPriceVO);
+        stock.validateSufficientQuantity(totalQuantityVO);
+    }
+
+    /** User의 balance를 차감합니다 **/
+    private void deductUserBalance(User user, Money totalPriceVO) {
+        user.withdraw(totalPriceVO);
+    }
+
+    /** 단일 매수 주문 저장합니다 **/
     private void saveSingleBuyOrder(Quantity totalQuantityVO, Money totalPriceVO,
                                     User user, Stock stock) {
         // StockOrder / Order 생성

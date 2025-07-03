@@ -22,10 +22,17 @@ public class Money {
     }
 
     public Money plus(Money other) {
+        if (other == null) {
+            throw new IllegalArgumentException("인자를 확인해주세요.");
+        }
         return new Money(this.moneyValue + other.moneyValue);
     }
 
     public Money minus(Money other) {
+        if (other == null) {
+            throw new IllegalArgumentException("인자를 확인해주세요.");
+        }
+
         if (isLowerThan(other)) {
             throw new IllegalArgumentException("잔액이 부족합니다");
         }

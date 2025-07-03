@@ -3,10 +3,8 @@ package com.portfolio2025.first.domain;
 
 import com.portfolio2025.first.domain.order.OrderStatus;
 import com.portfolio2025.first.domain.order.OrderType;
-import com.portfolio2025.first.domain.stock.Stock;
 import com.portfolio2025.first.domain.stock.StockOrder;
 import com.portfolio2025.first.domain.vo.Money;
-import com.portfolio2025.first.domain.vo.Quantity;
 import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -73,15 +71,14 @@ public class Order {
         this.user = user;
         this.orderStatus = OrderStatus.CREATED;
         this.orderType = orderType;
-        this.orderType = orderType;
         this.totalPrice = totalPrice;
         this.deleted = false;
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
     }
 
-    public static Order createBuyOrder(User user, StockOrder stockOrder, OrderType orderType,
-                                       Money totalPrice) {
+    public static Order createSingleBuyOrder(User user, StockOrder stockOrder, OrderType orderType,
+                                             Money totalPrice) {
         Order createdOrder = Order.builder()
                 .user(user)
                 .orderType(orderType)
@@ -90,22 +87,36 @@ public class Order {
                 .updatedAt(LocalDateTime.now())
                 .build();
 
+        // 양방향 설정하기
+        addStockOrder(stockOrder, createdOrder);
+
         return createdOrder;
     }
 
-    /** 편의 메서드: StockOrder 추가 시 자동 관계 설정 */
-//    public void addStockOrder(StockOrder stockOrder) {
-//        stockOrders.add(stockOrder);
-//        stockOrder.setOrder(this);
-//    }
+    /** 양방향 연관관계 편의 메서드 **/
+    private static void addStockOrder(StockOrder stockOrder, Order createdOrder) {
+        createdOrder.getStockOrders().add(stockOrder);
+        stockOrder.setOrder(createdOrder);
+    }
 
-    /** StockOrder 변경 시 totalPrice 재계산 (예: 주문 추가/삭제 시) */
-//    public void updateTotalPrice() {
-//        this.totalPrice = stockOrders.stream()
-//                .mapToLong(so -> so.getRequestedQuantity() * so.getRequestedPrice())
-//                .sum();
-//        this.updatedAt = LocalDateTime.now();
-//    }
+    /** 복수 주문 매수 메서드 **/
+    public static Order createBulkBuyOrder(User user, List<StockOrder> stockOrders, OrderType orderType, Money totalPrice) {
+
+        Order createdBulkOrder = Order.builder()
+                .user(user)
+                .orderType(orderType)
+                .totalPrice(totalPrice)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+
+        // 양방향 매핑 관계 설정
+        for (StockOrder stockOrder : stockOrders) {
+            addStockOrder(stockOrder, createdBulkOrder);
+        }
+
+        return createdBulkOrder;
+    }
 
     /** 상태 변경 시 시간 갱신 */
     public void updateStatus(OrderStatus newStatus) {

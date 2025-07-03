@@ -21,10 +21,17 @@ public class Quantity {
     }
 
     public Quantity plus(Quantity otherQuantity) {
+        if (otherQuantity == null) {
+            throw new IllegalArgumentException("인자를 확인해주세요.");
+        }
         return new Quantity(this.quantityValue + otherQuantity.getQuantityValue());
     }
 
     public Quantity minus(Quantity otherQuantity) {
+        if (otherQuantity == null) {
+            throw new IllegalArgumentException("인자를 확인해주세요.");
+        }
+
         if (isLowerThan(otherQuantity)) {
             throw new IllegalArgumentException("잔여 수량이 부족합니다.");
         }

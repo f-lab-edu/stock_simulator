@@ -96,5 +96,10 @@ public class User {
             throw new IllegalArgumentException("Insufficient account balance");
         }
     }
+
+    public void buy(Money totalPriceVO) {
+        validateSufficientBalance(totalPriceVO);
+        withdraw(totalPriceVO);
+    }
 }
 

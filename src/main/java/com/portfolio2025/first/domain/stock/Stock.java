@@ -88,5 +88,9 @@ public class Stock {
             throw new IllegalArgumentException("Not enough stock quantity in market");
         }
     }
+
+    public void reserve(Quantity totalQuantityVO) {
+        validateSufficientQuantity(totalQuantityVO);
+    }
 }
 

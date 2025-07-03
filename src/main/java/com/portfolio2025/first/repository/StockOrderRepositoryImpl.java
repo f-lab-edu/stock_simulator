@@ -13,8 +13,8 @@ public class StockOrderRepositoryImpl extends BaseRepositoryImpl<StockOrder, Lon
 
     public void save(StockOrder stockOrder, Order order) {
         // 양방향 고려한 편의 메서드 설정 (다 클래스 연관관계 추가하는 방향으로 설정)
-        order.getStockOrders().add(stockOrder);
-        stockOrder.setOrder(order);
+//        order.getStockOrders().add(stockOrder);
+//        stockOrder.setOrder(order);
         em.persist(stockOrder);
     }
 

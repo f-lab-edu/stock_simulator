@@ -11,9 +11,13 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
+import lombok.AccessLevel;
+import lombok.Builder;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "portfolio_stocks")
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class PortfolioStock {
 
     @Id
@@ -38,5 +42,32 @@ public class PortfolioStock {
 
     @Column(name = "last_updated_at")
     private LocalDateTime lastUpdatedAt;
+
+    @Builder
+    public PortfolioStock(Long id, Portfolio portfolio, Stock stock, Long portfolioQuantity,
+                          Long portfolioAveragePrice, LocalDateTime lastUpdatedAt) {
+        this.id = id;
+        this.portfolio = portfolio;
+        this.stock = stock;
+        this.portfolioQuantity = portfolioQuantity;
+        this.portfolioAveragePrice = portfolioAveragePrice;
+        this.lastUpdatedAt = lastUpdatedAt;
+    }
+
+    // static 생성자
+    public static PortfolioStock create(Portfolio portfolio, Stock stock,
+                                        Long portfolioAveragePrice, LocalDateTime createdAt) {
+        return PortfolioStock.builder()
+                .portfolio(portfolio)
+                .stock(stock)
+                .portfolioQuantity(0L)
+                .portfolioAveragePrice(portfolioAveragePrice)
+                .lastUpdatedAt(createdAt)
+                .build();
+    }
+
+    public void addQuantity(Long quantity) {
+        this.portfolioQuantity += quantity;
+    }
 }
 

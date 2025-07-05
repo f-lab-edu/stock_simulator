@@ -9,7 +9,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.portfolio2025.first.domain.Account;
-import com.portfolio2025.first.domain.Money;
+import com.portfolio2025.first.domain.vo.Money;
 import com.portfolio2025.first.domain.User;
 import com.portfolio2025.first.repository.AccountRepository;
 import com.portfolio2025.first.repository.UserRepository;
@@ -126,11 +126,11 @@ class AccountServiceTest {
         Money depositMoney = new Money(1000L);
 
         // When
-        accountService.deposit("123-456-7890", depositMoney);
+        accountService.transferFromAccountToUser("123-456-7890", depositMoney);
 
         // Then
-        assertEquals(99_999_999_000L, account.getAvailableCash().getAmount());
-        assertEquals(1000L, user.getBalance().getAmount());
+        assertEquals(99_999_999_000L, account.getAvailableCash().getMoneyValue());
+        assertEquals(1000L, user.getBalance().getMoneyValue());
 
         verify(accountRepository, times(1)).findByAccountNumber("123-456-7890");
     }
@@ -143,7 +143,7 @@ class AccountServiceTest {
 
         // Then
         IllegalArgumentException exception = Assertions.assertThrows(IllegalArgumentException.class,
-                () -> accountService.deposit("123-456-7890", depositMoney));
+                () -> accountService.transferFromAccountToUser("123-456-7890", depositMoney));
         assertEquals("잔액이 부족합니다", exception.getMessage());
 
         verify(accountRepository, times(1)).findByAccountNumber("123-456-7890");
@@ -158,11 +158,11 @@ class AccountServiceTest {
         Money withdrawAmount = new Money(2000L);
 
         // When
-        accountService.withdraw("123-456-7890", withdrawAmount);
+        accountService.transferFromUserToAccount("123-456-7890", withdrawAmount);
 
         // Then
-        assertEquals(100_000_002_000L, account.getAvailableCash().getAmount());
-        assertEquals(3000L, user.getBalance().getAmount());
+        assertEquals(100_000_002_000L, account.getAvailableCash().getMoneyValue());
+        assertEquals(3000L, user.getBalance().getMoneyValue());
 
         verify(accountRepository, times(1)).findByAccountNumber("123-456-7890");
     }
@@ -175,7 +175,7 @@ class AccountServiceTest {
 
         // Then
         String exceptionMessage = Assertions.assertThrows(IllegalArgumentException.class,
-                        () -> accountService.withdraw("123-456-7890", depositMoney))
+                        () -> accountService.transferFromUserToAccount("123-456-7890", depositMoney))
                 .getMessage();
         assertEquals("잔액이 부족합니다", exceptionMessage);
 

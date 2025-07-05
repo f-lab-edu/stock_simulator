@@ -1,7 +1,7 @@
 package com.portfolio2025.first.service;
 
 import com.portfolio2025.first.domain.Account;
-import com.portfolio2025.first.domain.Money;
+import com.portfolio2025.first.domain.vo.Money;
 import com.portfolio2025.first.domain.User;
 import com.portfolio2025.first.repository.AccountRepository;
 import java.util.List;
@@ -43,14 +43,13 @@ public class AccountService {
     
     // username(String)으로 Account 조회
     public List<Account> getAccountsByUsername(String username) {
-        return accountRepository.findByUser(username);
+        return accountRepository.findByUserName(username);
     }
 
-    // 입금
-    // Transaction 단위에서 진행되어야 함
+    // Account -> User
     @Transactional
-    public void deposit(String accountNumber, Money money) {
-        Account account = accountRepository.findByAccountNumber(accountNumber)
+    public void transferFromAccountToUser(String accountNumber, Money money) {
+        Account account = accountRepository.findByAccountNumberWithLock(accountNumber)
                 .orElseThrow(() -> new IllegalArgumentException("Account not found"));
         User user = account.getUser();
 
@@ -58,11 +57,10 @@ public class AccountService {
         user.deposit(money);
     }
 
-    // 출금
-    // Transaction 단위에서 진행되어야 함
+    // User -> Account
     @Transactional
-    public void withdraw(String accountNumber, Money money) {
-        Account account = accountRepository.findByAccountNumber(accountNumber)
+    public void transferFromUserToAccount(String accountNumber, Money money) {
+        Account account = accountRepository.findByAccountNumberWithLock(accountNumber)
                 .orElseThrow(() -> new IllegalArgumentException("Account not found"));
         User user = account.getUser();
 

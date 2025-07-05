@@ -1,5 +1,6 @@
 package com.portfolio2025.first.domain;
 
+import com.portfolio2025.first.domain.vo.Money;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
@@ -57,7 +58,6 @@ public class User {
         this.updatedAt = LocalDateTime.now();
     }
 
-
     public void updateContact(String phoneNumber, String email) {
         this.phoneNumber = phoneNumber;
         this.email = email;
@@ -85,6 +85,21 @@ public class User {
 
     public void withdraw(Money money) {
         this.balance = balance.minus(money);
+    }
+
+    public boolean isBalanceInsufficient(Money money) {
+        return (balance.isLowerThan(money));
+    }
+
+    public void validateSufficientBalance(Money money) {
+        if (isBalanceInsufficient(money)) {
+            throw new IllegalArgumentException("Insufficient account balance");
+        }
+    }
+
+    public void buy(Money totalPriceVO) {
+        validateSufficientBalance(totalPriceVO);
+        withdraw(totalPriceVO);
     }
 }
 

@@ -55,7 +55,7 @@ public class Order {
     @Column(name = "deleted", nullable = false)
     private Boolean deleted; // 삭제 여부
 
-    @Column(name = "created_at", nullable = false)
+    @Column(name = "created_at", nullable = false) // nullable 설정했다면 - primitive 사용 가능함
     private LocalDateTime createdAt;
 
     @Column(name = "updated_at", nullable = false)
@@ -81,7 +81,7 @@ public class Order {
                                              Money totalPrice) {
         Order createdOrder = Order.builder()
                 .user(user)
-                .orderType(orderType)
+                .orderType(orderType) // ㅁㅐ도 매수?
                 .totalPrice(totalPrice)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())

@@ -57,6 +57,11 @@ public class StockOrder {
     @AttributeOverride(name = "quantityValue", column = @Column(name = "executed_quantity", nullable = false))
     private Quantity executedQuantity;
 
+    // 남음 수량, 미체결 수량
+    @Embedded
+    @AttributeOverride(name = "quantityValue", column = @Column(name = "remained_quantity", nullable = false))
+    private Quantity remainedQuantity;
+
     // 평균 체결 단가 (체결 없으면 null 허용)
     @Embedded
     @AttributeOverride(name = "moneyValue", column = @Column(name = "average_executed_price"))
@@ -82,6 +87,7 @@ public class StockOrder {
         this.requestedQuantity = requestedQuantity;
         this.requestedPrice = requestedPrice;
         this.executedQuantity = new Quantity(0L);  // 최초 체결 수량은 0
+        this.remainedQuantity = new Quantity(0L);
         this.stockOrderStatus = stockOrderStatus;
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();

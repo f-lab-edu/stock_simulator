@@ -41,6 +41,7 @@ public class BuyStockService {
         saveSingleBuyOrder(totalQuantityVO, totalPriceVO, user, stock);
     }
 
+    // validate 호출부에서 진행하는 걸로
     @Transactional
     public void placeBulkBuyOrder(List<StockOrderRequestDTO> stockOrderRequestDTOList) {
         // List<> 형식의 검증은 DTO 내에서 한번에 처리 불가해서 따로 한번 더 처리함

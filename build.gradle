@@ -29,6 +29,8 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 	implementation 'redis.clients:jedis:4.4.0'
 	implementation 'com.fasterxml.jackson.core:jackson-databind:2.15.0'
+	implementation 'org.redisson:redisson-spring-boot-starter:3.23.5' // 버전은 최신 확인
+
 	compileOnly 'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'

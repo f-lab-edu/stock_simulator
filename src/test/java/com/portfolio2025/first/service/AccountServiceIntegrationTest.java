@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.portfolio2025.first.domain.Account;
 import com.portfolio2025.first.domain.User;
+import com.portfolio2025.first.dto.CreateAccountRequestDTO;
 import com.portfolio2025.first.repository.AccountRepository;
 import com.portfolio2025.first.repository.UserRepository;
 import org.junit.jupiter.api.Test;
@@ -44,8 +45,11 @@ class AccountServiceIntegrationTest {
         String accountNumber = "111-222-333";
         String userName = "홍길동";
 
+        CreateAccountRequestDTO createAccountRequestDTO = new CreateAccountRequestDTO(bankName, accountNumber,
+                userName);
+
         // when
-        Account savedAccount = accountService.createAccount(user, bankName, accountNumber, userName);
+        Account savedAccount = accountService.createAccount(user.getId(), createAccountRequestDTO);
 
         // then
         Account foundAccount = accountRepository.findById(savedAccount.getId()).orElseThrow();

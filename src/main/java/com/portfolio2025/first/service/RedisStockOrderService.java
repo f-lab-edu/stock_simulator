@@ -3,6 +3,7 @@ package com.portfolio2025.first.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.portfolio2025.first.converter.StockOrderRedisConverter;
+import com.portfolio2025.first.domain.MatchingPair;
 import com.portfolio2025.first.domain.stock.StockOrder;
 import com.portfolio2025.first.dto.StockOrderRedisDTO;
 import java.time.ZoneOffset;
@@ -15,7 +16,7 @@ import org.springframework.stereotype.Service;
 /**
  * 매수 주문 시 가격(음수화) - 시간 (pop 진행 시 reverse)
  * 매도 주문 시 가격(양수화) + 시간으로
- *
+ * remove 가 반영되는 경우에 분산 락 고려해야 함 -- 아직 구현 못한 상황 (유의)
  */
 
 
@@ -89,5 +90,74 @@ public class RedisStockOrderService {
         } catch (JsonProcessingException e) {
             throw new RuntimeException("매도 주문 JSON 역직렬화 실패", e);
         }
+    }
+
+    /** 수정된 매도 주문 다시 올리기 (기존 데이터 삭제 - 새로 추가) **/
+    public void pushModifiedSellOrder(StockOrderRedisDTO sellStockOrderDTO) {
+        String key = getSellKey(sellStockOrderDTO.getStockCode());
+        // Redisson 락 고려하지 않은 상황
+        try {
+            String json = objectMapper.writeValueAsString(sellStockOrderDTO);
+            redisTemplate.opsForZSet().remove(key, json);
+            // 점수, 새롭게 추가
+            double score = sellStockOrderDTO.getRequestedPrice() * 1_000_000_000L
+                    + sellStockOrderDTO.getCreatedAt().atZone(ZoneOffset.UTC).toInstant().toEpochMilli();
+            redisTemplate.opsForZSet().add(key, json, score);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("매도 주문 JSON 직렬화 실패", e);
+        }
+    }
+
+     /** key 안에 value 해당되면 삭제하기) **/
+    public void removeBuyOrder(StockOrderRedisDTO buyStockOrderDTO) {
+        // Redisson 락 고려하지 않은 상황
+        String key = getBuyKey(buyStockOrderDTO.getStockCode());
+        try {
+            String json = objectMapper.writeValueAsString(buyStockOrderDTO);
+            redisTemplate.opsForZSet().remove(key, json);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("매수 주문 JSON 직렬화 실패", e);
+        }
+
+    }
+
+    public Optional<MatchingPair> popMatchPair(String stockCode) {
+        Optional<StockOrderRedisDTO> buyStockOrderDTO = popBestBuyOrder(stockCode);
+        Optional<StockOrderRedisDTO> sellStockOrderDTO = popBestSellOrder(stockCode);
+
+        if (buyStockOrderDTO.isEmpty() || sellStockOrderDTO.isEmpty()) {
+            // Pair 매칭이 되지 않은 경우 -> empty() 한 상태로 처리하기
+            return Optional.empty();
+        }
+
+        return Optional.of(new MatchingPair(buyStockOrderDTO.get(), sellStockOrderDTO.get()));
+    }
+
+    public void pushBuyOrderDTO(StockOrderRedisDTO buyDTO) {
+        double score = -buyDTO.getRequestedPrice() * 1_000_000_000L
+                - buyDTO.getCreatedAt().atZone(ZoneOffset.UTC).toInstant().toEpochMilli();
+        try {
+            String json = objectMapper.writeValueAsString(buyDTO);
+            redisTemplate.opsForZSet().add(getBuyKey(buyDTO.getStockCode()), json, score); // key - value - score 순서
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("매수 주문 JSON 직렬화 실패", e);
+        }
+    }
+
+    public void pushSellOrderDTO(StockOrderRedisDTO sellDTO) {
+        double score = sellDTO.getRequestedPrice() * 1_000_000_000L
+                + sellDTO.getCreatedAt().atZone(ZoneOffset.UTC).toInstant().toEpochMilli();
+        try {
+            String json = objectMapper.writeValueAsString(sellDTO);
+            redisTemplate.opsForZSet().add(getBuyKey(sellDTO.getStockCode()), json, score); // key - value - score 순서
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("매수 주문 JSON 직렬화 실패", e);
+        }
+    }
+
+
+    public void pushBack(MatchingPair pair) {
+        pushBuyOrderDTO(pair.getBuyDTO());
+        pushSellOrderDTO(pair.getSellDTO());
     }
 }

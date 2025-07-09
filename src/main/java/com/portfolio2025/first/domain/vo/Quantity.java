@@ -49,4 +49,8 @@ public class Quantity {
                 "quantityValue=" + quantityValue +
                 '}';
     }
+
+    public boolean isZero() {
+        return (this.quantityValue == 0);
+    }
 }

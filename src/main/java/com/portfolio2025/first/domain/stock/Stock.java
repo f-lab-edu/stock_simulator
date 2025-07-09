@@ -47,7 +47,7 @@ public class Stock {
 
     @Embedded
     @Column(name = "available_quantity", nullable = false)
-    private Quantity availableQuantity;
+    private Quantity availableQuantity; // 유통 주식량
 
     // 📦 (선택) 포트폴리오 종목 연관
     @OneToMany(mappedBy = "stock")
@@ -91,6 +91,10 @@ public class Stock {
 
     public void reserve(Quantity totalQuantityVO) {
         validateSufficientQuantity(totalQuantityVO);
+    }
+
+    public void decreaseAvailableQuantity(Quantity executedQuantity) {
+        this.availableQuantity = availableQuantity.minus(executedQuantity);
     }
 }
 

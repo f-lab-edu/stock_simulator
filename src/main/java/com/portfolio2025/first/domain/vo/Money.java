@@ -52,4 +52,8 @@ public class Money {
     public String toString() {
         return String.valueOf(moneyValue);
     }
+
+    public Money multiply(Quantity quantity) {
+        return new Money(moneyValue * quantity.getQuantityValue());
+    }
 }

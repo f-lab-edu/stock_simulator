@@ -123,5 +123,9 @@ public class Order {
         this.orderStatus = newStatus;
         this.updatedAt = LocalDateTime.now();
     }
+
+    public void updateExecutedTime(LocalDateTime executedTime) {
+        this.updatedAt = executedTime;
+    }
 }
 

@@ -1,6 +1,7 @@
 package com.portfolio2025.first.domain.stock;
 
 import com.portfolio2025.first.domain.Order;
+import com.portfolio2025.first.domain.Portfolio;
 import com.portfolio2025.first.domain.vo.Money;
 import com.portfolio2025.first.domain.vo.Quantity;
 import jakarta.persistence.AttributeOverride;
@@ -41,6 +42,11 @@ public class StockOrder {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "stock_id", nullable = false)
     private Stock stock;
+
+    // 🔗 포트폴리오 연관 (다대일)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "portfolio_id", nullable = false)
+    private Portfolio portfolio;
 
     // 최초 주문 수량
     @Embedded
@@ -120,6 +126,33 @@ public class StockOrder {
     public void updateStatus(StockOrderStatus newStatus) {
         this.stockOrderStatus = newStatus;
         this.updatedAt = LocalDateTime.now();
+    }
+
+    public void updateQuantity(Quantity executingQuantity, Money executingPrice) {
+        // 1. 기존 체결 수량, 체결 단가
+        long prevExecutedQty = this.executedQuantity.getQuantityValue();
+        long newExecutedQty = prevExecutedQty + executingQuantity.getQuantityValue();
+
+        // 2. 가중 평균 계산
+        long prevTotal = this.averageExecutedPrice != null
+                ? this.averageExecutedPrice.getMoneyValue() * prevExecutedQty
+                : 0L;
+
+        long newTotal = executingQuantity.getQuantityValue() * executingPrice.getMoneyValue();
+        long avgPrice = (prevTotal + newTotal) / newExecutedQty;
+
+        // 3. 필드 갱신
+        this.executedQuantity = new Quantity(newExecutedQty);
+        this.remainedQuantity = this.requestedQuantity.minus(this.executedQuantity);
+        this.averageExecutedPrice = new Money(avgPrice);
+        this.updatedAt = LocalDateTime.now();
+
+        // 4. 상태 갱신
+        if (this.remainedQuantity.isZero()) {
+            this.stockOrderStatus = StockOrderStatus.FILLED;
+        } else {
+            this.stockOrderStatus = StockOrderStatus.PARTIALLY_FILLED;
+        }
     }
 }
 

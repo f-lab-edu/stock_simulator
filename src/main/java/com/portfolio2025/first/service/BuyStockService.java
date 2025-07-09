@@ -36,7 +36,7 @@ public class BuyStockService {
         Quantity totalQuantityVO = new Quantity(stockOrderRequestDTO.getRequestedQuantity());
         // 2. 도메인 관련 검증 진행
         stock.reserve(totalQuantityVO);
-        user.buy(totalPriceVO);
+//        user.buy(totalPriceVO);
         // 3. Order 및 StockOrder 생성 및 저장 -> user, stock 만 인자로 전달하는 방식과 비교해서 생각하기
         saveSingleBuyOrder(totalQuantityVO, totalPriceVO, user, stock);
     }
@@ -59,7 +59,7 @@ public class BuyStockService {
                 .toList();
 
         Money totalPrice = calculateTotalPrice(stockOrders);
-        user.buy(totalPrice);
+//        user.buy(totalPrice);
         orderRepository.save(Order.createBulkBuyOrder(user, stockOrders, OrderType.BUY, totalPrice));
     }
 
@@ -97,13 +97,13 @@ public class BuyStockService {
 
     /** Domain Validation **/
     private void validateOrderConditions(User user, Stock stock, Money totalPriceVO, Quantity totalQuantityVO) {
-        user.validateSufficientBalance(totalPriceVO);
+//        user.validateSufficientBalance(totalPriceVO);
         stock.validateSufficientQuantity(totalQuantityVO);
     }
 
     /** User의 balance를 차감합니다 **/
     private void deductUserBalance(User user, Money totalPriceVO) {
-        user.withdraw(totalPriceVO);
+//        user.withdraw(totalPriceVO);
     }
 
     /** 단일 매수 주문 저장합니다 **/

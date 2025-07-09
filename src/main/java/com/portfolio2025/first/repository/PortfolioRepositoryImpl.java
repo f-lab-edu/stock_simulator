@@ -4,6 +4,7 @@ import com.portfolio2025.first.domain.Portfolio;
 import com.portfolio2025.first.domain.PortfolioType;
 import com.portfolio2025.first.domain.User;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Repository;
@@ -21,6 +22,18 @@ public class PortfolioRepositoryImpl extends BaseRepositoryImpl<Portfolio, Long>
         List<Portfolio> result = em.createQuery(jpql, Portfolio.class)
                 .setParameter("user", user)
                 .setParameter("type", portfolioType)
+                .getResultList();
+
+        return result.stream().findFirst();
+    }
+
+    @Override
+    public Optional<Portfolio> findByIdWithLock(Long portfolioId) {
+        String jpql = "SELECT p FROM Portfolio p WHERE p.id = :portfolioId";
+
+        List<Portfolio> result = em.createQuery(jpql, Portfolio.class)
+                .setParameter("id", portfolioId)
+                .setLockMode(LockModeType.PESSIMISTIC_WRITE)
                 .getResultList();
 
         return result.stream().findFirst();

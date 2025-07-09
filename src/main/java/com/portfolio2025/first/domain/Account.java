@@ -53,7 +53,7 @@ public class Account {
     private String userName;
 
     @Builder
-    public Account(User user, String bankName, String accountNumber, String userName) {
+    private Account(User user, String bankName, String accountNumber, String userName) {
         if (user == null || bankName == null || accountNumber == null) {
             throw new IllegalArgumentException("사용자, 은행명, 계좌번호는 필수입니다.");
         }
@@ -67,6 +67,15 @@ public class Account {
         this.createdAt = LocalDateTime.now();
         this.isActive = true;
         this.availableCash = new Money(10_000_000L); // 천 만원
+    }
+
+    public static Account createAccount(User user, String bankName, String accountNumber, String userName) {
+        return Account.builder()
+                .user(user)
+                .bankName(bankName)
+                .accountNumber(accountNumber)
+                .userName(userName)
+                .build();
     }
 
     public void withdraw(Money money) {

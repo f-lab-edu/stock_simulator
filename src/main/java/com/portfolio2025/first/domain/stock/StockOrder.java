@@ -88,21 +88,24 @@ public class StockOrder {
     private LocalDateTime updatedAt;
 
     @Builder
-    private StockOrder(Stock stock, Quantity requestedQuantity, Money requestedPrice, StockOrderStatus stockOrderStatus) {
+    private StockOrder(Stock stock, Quantity requestedQuantity, Money requestedPrice,
+                       StockOrderStatus stockOrderStatus, Portfolio portfolio) {
         this.stock = stock;
         this.requestedQuantity = requestedQuantity;
         this.requestedPrice = requestedPrice;
         this.executedQuantity = new Quantity(0L);  // 최초 체결 수량은 0
         this.remainedQuantity = new Quantity(0L);
+        this.portfolio = portfolio;
         this.stockOrderStatus = stockOrderStatus;
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
     }
 
     public static StockOrder createStockOrder(Stock stock, Quantity requestedQuantity, Money requestedPrice,
-                                              StockOrderStatus stockOrderStatus) {
+                                              Portfolio portfolio) {
         return StockOrder.builder()
                 .stock(stock)
+                .portfolio(portfolio)
                 .requestedQuantity(requestedQuantity)
                 .requestedPrice(requestedPrice)
                 .stockOrderStatus(StockOrderStatus.PENDING)

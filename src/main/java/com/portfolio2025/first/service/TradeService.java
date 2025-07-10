@@ -1,11 +1,9 @@
 package com.portfolio2025.first.service;
 
 import com.portfolio2025.first.domain.MatchingPair;
-import com.portfolio2025.first.domain.Order;
 import com.portfolio2025.first.domain.Portfolio;
 import com.portfolio2025.first.domain.PortfolioStock;
 import com.portfolio2025.first.domain.Trade;
-import com.portfolio2025.first.domain.User;
 import com.portfolio2025.first.domain.stock.Stock;
 import com.portfolio2025.first.domain.stock.StockOrder;
 import com.portfolio2025.first.domain.vo.Money;
@@ -151,7 +149,7 @@ public class TradeService {
         Money totalCost = price.multiply(quantity);
 
         // 2. 현금 증가
-        seller.increaseCash(totalCost);
+        seller.deposit(totalCost);
 
         // 3. 포트폴리오에서 주식 차감
         Optional<PortfolioStock> maybePortfolioStock =

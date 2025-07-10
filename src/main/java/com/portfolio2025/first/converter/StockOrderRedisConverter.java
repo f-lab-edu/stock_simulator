@@ -2,7 +2,9 @@ package com.portfolio2025.first.converter;
 
 import com.portfolio2025.first.domain.stock.StockOrder;
 import com.portfolio2025.first.dto.StockOrderRedisDTO;
+import org.springframework.stereotype.Component;
 
+@Component
 public class StockOrderRedisConverter {
 
     public StockOrderRedisDTO toDTO(StockOrder entity) {

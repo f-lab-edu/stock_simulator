@@ -1,4 +1,4 @@
-package com.portfolio2025.first.service;
+package com.portfolio2025.first.integration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -7,6 +7,7 @@ import com.portfolio2025.first.domain.User;
 import com.portfolio2025.first.dto.CreateAccountRequestDTO;
 import com.portfolio2025.first.repository.AccountRepository;
 import com.portfolio2025.first.repository.UserRepository;
+import com.portfolio2025.first.service.AccountService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;

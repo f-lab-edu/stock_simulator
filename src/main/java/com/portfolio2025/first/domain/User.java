@@ -13,6 +13,7 @@ import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -63,6 +64,7 @@ public class User {
         this.updatedAt = LocalDateTime.now();
     }
 
+    // save하는건 어떻게?
     public static User createUser(String name, String location, String phoneNumber, String email, String userId) {
         return User.builder()
                 .name(name)
@@ -87,6 +89,10 @@ public class User {
     /** 양방향 편의 메서드 **/
     public void addPortfolio(Portfolio portfolio) {
         portfolios.add(portfolio);
+    }
+
+    public Optional<Portfolio> getDefaultPortfolio() {
+        return portfolios.stream().filter(p -> p.getPortfolioType() == PortfolioType.STOCK).findFirst();
     }
 }
 

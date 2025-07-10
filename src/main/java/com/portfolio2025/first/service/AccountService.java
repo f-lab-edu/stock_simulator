@@ -36,10 +36,11 @@ public class AccountService {
     }
 
     // 계좌 생성
+    @Transactional
     public Account createAccount(Long userId, CreateAccountRequestDTO requestDTO) {
         User user = userRepository.findByIdForUpdate(userId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자 정보가 없습니다."));
-        validateAccountCreateInput(user, requestDTO);
+        validateAccountCreateInput(user, requestDTO); // 검증 위치는 계속해서 생각하기
 
         return accountRepository.save(Account.createAccount(user, requestDTO.getBankName(),
                 requestDTO.getAccountNumber(), requestDTO.getUserName()));
@@ -57,17 +58,21 @@ public class AccountService {
                 .orElseThrow(() -> new IllegalArgumentException("사용자 정보가 없습니다."));
         Account account = accountRepository.findByAccountNumberWithLock(dto.getAccountNumber())
                 .orElseThrow(() -> new IllegalArgumentException("Account not found"));
-        Portfolio portfolio = portfolioRepository.findByIdWithLock(dto.getPortfolioId())
+        Portfolio portfolio = portfolioRepository.findByIdForUpdate(dto.getPortfolioId())
                 .orElseThrow(() -> new IllegalArgumentException("Portfolio not found"));
 
         // 메서드화 하기
-        if (!portfolio.getUser().getId().equals(user.getId())) {
-            throw new SecurityException("해당 포트폴리오에 접근할 수 없습니다.");
-        }
+        validatePortfolioOwnership(portfolio, user);
 
         Money amount = dto.toMoney();
         account.withdraw(amount); // 계좌에서 인출하고
-        portfolio.increaseAvailableCash(amount); // 포트폴리오에 입금
+        portfolio.deposit(amount); // 포트폴리오에 입금
+    }
+
+    private void validatePortfolioOwnership(Portfolio portfolio, User user) {
+        if (!portfolio.getUser().getId().equals(user.getId())) {
+            throw new SecurityException("해당 포트폴리오에 접근할 수 없습니다.");
+        }
     }
 
     // Portfolio -> Account
@@ -77,16 +82,14 @@ public class AccountService {
                 .orElseThrow(() -> new IllegalArgumentException("사용자 정보가 없습니다."));
         Account account = accountRepository.findByAccountNumberWithLock(dto.getAccountNumber())
                 .orElseThrow(() -> new IllegalArgumentException("Account not found"));
-        Portfolio portfolio = portfolioRepository.findByIdWithLock(dto.getPortfolioId())
+        Portfolio portfolio = portfolioRepository.findByIdForUpdate(dto.getPortfolioId())
                 .orElseThrow(() -> new IllegalArgumentException("Portfolio not found"));
 
-        if (!portfolio.getUser().getId().equals(user.getId())) {
-            throw new SecurityException("해당 포트폴리오에 접근할 수 없습니다.");
-        }
+        validatePortfolioOwnership(portfolio, user);
 
         Money amount = dto.toMoney();
 
-        portfolio.decreaseAvailableCash(amount); // 포트폴리오에서 출금
+        portfolio.withdraw(amount); // 포트폴리오에서 출금
         account.deposit(amount); // 계좌에 입금
     }
 

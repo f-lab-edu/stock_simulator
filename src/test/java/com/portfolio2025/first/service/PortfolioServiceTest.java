@@ -51,8 +51,7 @@ class PortfolioServiceTest {
                 .portfolioType(PortfolioType.STOCK)
                 .build();
 
-        createPortfolioDTO = new CreatePortfolioRequestDTO();
-        createPortfolioDTO.setPortfolioType(PortfolioType.STOCK);
+        createPortfolioDTO = new CreatePortfolioRequestDTO(PortfolioType.STOCK);
     }
 
     @Test

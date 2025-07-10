@@ -1,11 +1,13 @@
 package com.portfolio2025.first.dto;
 
 import com.portfolio2025.first.domain.vo.Money;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 
 @Getter
 @Setter
+@AllArgsConstructor
 public class TransferToPortfolioRequestDTO {
     // 조회 시 필요한 값들 생각하기
     private String accountNumber; // account 조회 시 사용할 account number

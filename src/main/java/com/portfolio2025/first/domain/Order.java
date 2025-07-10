@@ -22,6 +22,7 @@ import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import javax.sound.sampled.Port;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -77,11 +78,11 @@ public class Order {
         this.updatedAt = LocalDateTime.now();
     }
 
-    public static Order createSingleBuyOrder(User user, StockOrder stockOrder, OrderType orderType,
+    public static Order createSingleBuyOrder(Portfolio portfolio, StockOrder stockOrder, OrderType orderType,
                                              Money totalPrice) {
         Order createdOrder = Order.builder()
-                .user(user)
-                .orderType(orderType) // ㅁㅐ도 매수?
+                .user(portfolio.getUser())
+                .orderType(orderType) // 매도, 매수
                 .totalPrice(totalPrice)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
@@ -117,6 +118,27 @@ public class Order {
 
         return createdBulkOrder;
     }
+
+    public static Order createBulkBuyOrder(Portfolio portfolio, List<StockOrder> stockOrders, OrderType orderType, Money totalPrice) {
+
+        Order order = Order.builder()
+                .user(portfolio.getUser()) // 간접 연관
+                .orderType(orderType)
+                .totalPrice(totalPrice)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+
+        // 양방향 매핑 관계 설정
+        stockOrders.forEach(so -> {
+            so.setOrder(order);
+            order.getStockOrders().add(so);
+        });
+
+        return order;
+    }
+
+
 
     /** 상태 변경 시 시간 갱신 */
     public void updateStatus(OrderStatus newStatus) {

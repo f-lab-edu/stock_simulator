@@ -28,14 +28,51 @@ public class PortfolioRepositoryImpl extends BaseRepositoryImpl<Portfolio, Long>
     }
 
     @Override
-    public Optional<Portfolio> findByIdWithLock(Long portfolioId) {
+    public Optional<Portfolio> findByIdForUpdate(Long portfolioId) {
         String jpql = "SELECT p FROM Portfolio p WHERE p.id = :portfolioId";
 
         List<Portfolio> result = em.createQuery(jpql, Portfolio.class)
-                .setParameter("id", portfolioId)
+                .setParameter("portfolioId", portfolioId)
                 .setLockMode(LockModeType.PESSIMISTIC_WRITE)
                 .getResultList();
 
         return result.stream().findFirst();
+    }
+
+    @Override
+    public Optional<Portfolio> findByUserIdAndPortfolioType(Long userId, PortfolioType portfolioType) {
+        String jpql = "SELECT p FROM Portfolio p WHERE p.user.id = :userId AND p.portfolioType = :type";
+
+        List<Portfolio> result = em.createQuery(jpql, Portfolio.class)
+                .setParameter("userId", userId)
+                .setParameter("type", portfolioType)
+                .setLockMode(LockModeType.PESSIMISTIC_WRITE)
+                .getResultList();
+
+        return result.stream().findFirst();
+    }
+
+//    public boolean existsByUserIdAndPortfolioType(Long userId, PortfolioType portfolioType) {
+//        String jpql = "SELECT 1 FROM Portfolio p WHERE p.user.id = :userId AND p.portfolioType = :type";
+//
+//        List<Integer> result = em.createQuery(jpql, Integer.class)
+//                .setParameter("userId", userId)
+//                .setParameter("type", portfolioType)
+//                .setMaxResults(1)
+//                .getResultList();
+//
+//        return !result.isEmpty();
+//    }
+
+    @Override
+    public boolean existsByUserIdAndPortfolioType(Long userId, PortfolioType portfolioType) {
+        String jpql = "SELECT COUNT(p) FROM Portfolio p WHERE p.user.id = :userId AND p.portfolioType = :type";
+
+        Long count = em.createQuery(jpql, Long.class)
+                .setParameter("userId", userId)
+                .setParameter("type", portfolioType)
+                .getSingleResult();
+
+        return count > 0;
     }
 }

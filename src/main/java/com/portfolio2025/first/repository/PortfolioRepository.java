@@ -8,5 +8,9 @@ import java.util.Optional;
 public interface PortfolioRepository extends BaseRepository<Portfolio, Long>{
     Optional<Portfolio> findByUserAndType(User user, PortfolioType portfolioType);
 
-    Optional<Portfolio> findByIdWithLock(Long portfolioId);
+    Optional<Portfolio> findByIdForUpdate(Long portfolioId);
+
+    Optional<Portfolio> findByUserIdAndPortfolioType(Long userId, PortfolioType portfolioType);
+
+    boolean existsByUserIdAndPortfolioType(Long userId, PortfolioType portfolioType);
 }

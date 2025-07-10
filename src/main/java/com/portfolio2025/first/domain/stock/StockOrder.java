@@ -63,7 +63,7 @@ public class StockOrder {
     @AttributeOverride(name = "quantityValue", column = @Column(name = "executed_quantity", nullable = false))
     private Quantity executedQuantity;
 
-    // 남음 수량, 미체결 수량
+    // 남은 수량, 미체결 수량
     @Embedded
     @AttributeOverride(name = "quantityValue", column = @Column(name = "remained_quantity", nullable = false))
     private Quantity remainedQuantity;
@@ -94,7 +94,7 @@ public class StockOrder {
         this.requestedQuantity = requestedQuantity;
         this.requestedPrice = requestedPrice;
         this.executedQuantity = new Quantity(0L);  // 최초 체결 수량은 0
-        this.remainedQuantity = new Quantity(0L);
+        this.remainedQuantity = requestedQuantity; // 최초 미체결 수량은 요청 수량과 같음
         this.portfolio = portfolio;
         this.stockOrderStatus = stockOrderStatus;
         this.createdAt = LocalDateTime.now();

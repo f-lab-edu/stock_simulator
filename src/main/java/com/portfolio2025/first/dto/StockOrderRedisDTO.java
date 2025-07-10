@@ -8,13 +8,20 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
+
+/**
+ * Redis에 반영된, 혹은 Redis로 부터 가지고 온 데이터 구조 클래스
+ * 기존 StockOrder 수정되는 경우 -> 기존 주문 삭제하고 새로운 StockOrderRedisDTO 반영하는 걸로
+ */
 
 @Data
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
+@ToString
 public class StockOrderRedisDTO {
-    // 기존의 StockOrder 수정되는 경우 -> 기존 주문 삭제하고 새로운 StockOrderRedisDTO 반영하는 걸로
+
     private Long id; // stockOrderId
     private String stockCode; // 종목
     private Long requestedPrice; // 원 단위

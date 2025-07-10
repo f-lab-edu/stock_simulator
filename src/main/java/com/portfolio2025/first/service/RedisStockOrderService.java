@@ -149,12 +149,11 @@ public class RedisStockOrderService {
                 + sellDTO.getCreatedAt().atZone(ZoneOffset.UTC).toInstant().toEpochMilli();
         try {
             String json = objectMapper.writeValueAsString(sellDTO);
-            redisTemplate.opsForZSet().add(getBuyKey(sellDTO.getStockCode()), json, score); // key - value - score 순서
+            redisTemplate.opsForZSet().add(getSellKey(sellDTO.getStockCode()), json, score); // key - value - score 순서
         } catch (JsonProcessingException e) {
             throw new RuntimeException("매수 주문 JSON 직렬화 실패", e);
         }
     }
-
 
     public void pushBack(MatchingPair pair) {
         pushBuyOrderDTO(pair.getBuyDTO());

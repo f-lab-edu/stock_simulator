@@ -1,5 +1,6 @@
 package com.portfolio2025.first.domain;
 
+import com.portfolio2025.first.domain.vo.Money;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
@@ -25,7 +26,6 @@ public class Account {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // 🔗 User 참조 (ManyToOne) - 지연 로딩으로 (실제 객체를 사용할 때 조회하겠다는 의미)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
@@ -53,7 +53,7 @@ public class Account {
     private String userName;
 
     @Builder
-    public Account(User user, String bankName, String accountNumber, String userName) {
+    private Account(User user, String bankName, String accountNumber, String userName) {
         if (user == null || bankName == null || accountNumber == null) {
             throw new IllegalArgumentException("사용자, 은행명, 계좌번호는 필수입니다.");
         }
@@ -66,7 +66,16 @@ public class Account {
         // Initialization
         this.createdAt = LocalDateTime.now();
         this.isActive = true;
-        this.availableCash = new Money(1000_0000_0000L);
+        this.availableCash = new Money(10_000_000L); // 천 만원
+    }
+
+    public static Account createAccount(User user, String bankName, String accountNumber, String userName) {
+        return Account.builder()
+                .user(user)
+                .bankName(bankName)
+                .accountNumber(accountNumber)
+                .userName(userName)
+                .build();
     }
 
     public void withdraw(Money money) {
@@ -75,5 +84,9 @@ public class Account {
 
     public void deposit(Money money) {
         this.availableCash = availableCash.plus(money);
+    }
+
+    public boolean isLowerThan(Money money) {
+        return (availableCash.isLowerThan(money)) ? true : false;
     }
 }

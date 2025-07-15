@@ -14,5 +14,14 @@ spring:
         format_sql: true
     database-platform: org.hibernate.dialect.MySQLDialect
 
+  kafka:
+    bootstrap-servers: localhost:9092
+    admin:
+      auto-create: false
+      properties:
+        retries: 5
+    listener:
+      missing-topics-fatal: false # 존재하는 토픽으로 인한 앱 실패 방지 설정
+
 server:
   port: 8080

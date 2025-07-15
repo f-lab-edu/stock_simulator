@@ -1,4 +1,4 @@
-package com.portfolio2025.first.redis;
+package com.portfolio2025.first.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

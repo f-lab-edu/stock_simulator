@@ -8,6 +8,6 @@ public interface StockOrderRepository extends BaseRepository<StockOrder, Long>{
     // Override (양방향 연관관계, 서로 추가해줘야 함)
     void save(StockOrder stockOrder, Order order);
 
-    /** PESSIMISTIC_WRITE 락 동ㅂ잔 **/
-    Optional<StockOrder>  findByIdWithAllRelations(Long id);
+    /** PESSIMISTIC_WRITE 락 동반 **/
+    Optional<StockOrder> findByIdWithAllRelations(Long id);
 }

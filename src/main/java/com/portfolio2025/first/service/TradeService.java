@@ -19,6 +19,7 @@ import com.portfolio2025.first.repository.UserRepository;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,9 +34,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class TradeService {
 
-    private final RedisStockOrderService redisStockOrderService;
     private final UserRepository userRepository;
     private final OrderRepository orderRepository;
     private final StockOrderRepository stockOrderRepository;
@@ -44,20 +45,22 @@ public class TradeService {
     private final PortfolioRepository portfolioRepository; // 포트폴리오 상위 내역
     private final TradeRepository tradeRepository; // 체결 이력을 담당하는 테이블
 
+    private final RedisStockOrderService redisStockOrderService;
 
-    /** 매칭 시스템 메인 로직 **/
+    /** 체결 상황에 대해서 (핵심 로직) **/
     @Transactional
     public void match(String stockCode) {
 
         while (true) {
             // 1. 매칭 후보지 확인하기
             Optional<MatchingPair> pairCandidate = redisStockOrderService.popMatchPair(stockCode);
-            if (pairCandidate.isEmpty())
+            if (pairCandidate.isEmpty()) {
+                System.out.println("pairCandidate not found..");
                 break;
+            }
 
             MatchingPair pair = pairCandidate.get();
             if (pair.isNotPriceMatchable()) {
-                // 다시 넣기
                 redisStockOrderService.pushBack(pair);
                 break;
             }
@@ -73,9 +76,15 @@ public class TradeService {
             Portfolio sellOrderPortfolio = sellOrder.getPortfolio();
             Stock stock = buyOrder.getStock();
 
+
+            log.info("[Match] Trying to match buy/sell orders... before handling");
+
+
             // 3. 포트폴리오 동기화
             handleBuyerPortfolioAndCash(buyOrderPortfolio, stock, executableQuantity, executablePrice);
             handleSellerPortfolioAndCash(sellOrderPortfolio, stock, executableQuantity, executablePrice);
+
+            log.info("[Match] Trying to match buy/sell orders... before updating");
 
             // 4. 주문 상태 업데이트
             buyOrder.updateQuantity(executableQuantity, executablePrice);
@@ -112,7 +121,8 @@ public class TradeService {
         return pair.afterExecution(executableQuantity);
     }
 
-
+    /** N+1 문제 방지 - JOIN FETCH 방식 적용 **/
+    // StockOrderRedisDTO dto, String type - refactoring 진행해주기
     private StockOrder loadStockOrder(StockOrderRedisDTO dto) {
         // stockOrderId로 조회 (JOIN FETCH 방식 적용)
         return stockOrderRepository.findByIdWithAllRelations(dto.getId())
@@ -125,8 +135,8 @@ public class TradeService {
         // 1. 총 체결 금액 계산 = price * quantity
         Money totalCost = price.multiply(quantity);
 
-        // 2. 주문 등록 시점에 현금 차간하는 방식으로 제외
-//        buyer.deductCash(totalCost);
+        // 2. 주문 등록 시점에 예약된 금액 실제 차감 진행
+        buyer.releaseAndDeductCash(totalCost);
 
         // 3. 기존 보유 주식 조회
         Optional<PortfolioStock> maybePortfolioStock =
@@ -147,7 +157,6 @@ public class TradeService {
 
         // 1. 총 체결 금액 계산
         Money totalCost = price.multiply(quantity);
-
         // 2. 현금 증가
         seller.deposit(totalCost);
 
@@ -158,14 +167,12 @@ public class TradeService {
         if (maybePortfolioStock.isPresent()) {
             PortfolioStock portfolioStock = maybePortfolioStock.get();
 
-            // ❗ 수량 0이면 삭제
-            if (portfolioStock.decreaseQuantity(quantity)) {
+            boolean isEmpty = portfolioStock.decreaseQuantity(quantity); // 내부에서 reserved도 차감되게 변경
+            if (isEmpty) {
                 portfolioStockRepository.delete(portfolioStock);
             }
         } else {
-            // 예외 처리하기
             throw new IllegalStateException("매도할 주식이 포트폴리오에 없습니다.");
         }
-
     }
 }

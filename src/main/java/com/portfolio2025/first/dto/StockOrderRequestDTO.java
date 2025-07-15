@@ -2,6 +2,10 @@ package com.portfolio2025.first.dto;
 
 import lombok.Getter;
 
+/**
+ * 매수 or 매도 주문 생성 시 입력 데이터
+ */
+
 @Getter
 public class StockOrderRequestDTO {
     private String stockCode; // 종목 조회용 stockCode

@@ -5,6 +5,10 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 
+/**
+ * Account -> Portfolio 돈 보낼 때 필요한 입력 데이터
+ */
+
 @Getter
 @Setter
 @AllArgsConstructor

@@ -9,45 +9,86 @@ import com.portfolio2025.first.domain.stock.StockOrder;
 import com.portfolio2025.first.domain.vo.Money;
 import com.portfolio2025.first.domain.vo.Quantity;
 import com.portfolio2025.first.dto.StockOrderRequestDTO;
+import com.portfolio2025.first.dto.event.OrderCreatedEvent;
 import com.portfolio2025.first.repository.OrderRepository;
 import com.portfolio2025.first.repository.StockRepository;
 import com.portfolio2025.first.repository.UserRepository;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+
+
+/**
+ * 매수 관련 로직
+ *
+ * **/
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class BuyStockService {
 
     private final UserRepository userRepository;
     private final StockRepository stockRepository;
     private final OrderRepository orderRepository;
+    private final KafkaProducerService kafkaProducerService;
 
     /** 단일 매수 주문 전체 로직 **/
     @Transactional
-    public void placeSingleBuyOrder(StockOrderRequestDTO stockOrderRequestDTO) {
-        // 1. 조회 + VO
-        User user = findUserWithLock(stockOrderRequestDTO.getUserId());
-        // 투자용 포폴 준비
+    public void placeSingleBuyOrder(StockOrderRequestDTO dto) {
+        // 1. 조회
+        User user = findUserWithLock(dto.getUserId());
         Portfolio portfolio = user.getDefaultPortfolio()
                 .orElseThrow(() -> new IllegalArgumentException("투자용 포트폴리오가 존재하지 않습니다."));
-        Stock stock = findStockByStockCode(stockOrderRequestDTO.getStockCode());
+        Stock stock = findStockByStockCode(dto.getStockCode());
 
-        Money totalPrice = calculateTotalPrice(stockOrderRequestDTO);
-        Quantity totalQuantity = new Quantity(stockOrderRequestDTO.getRequestedQuantity());
-        // 2. 도메인 관련 검증 진행
+        // 2. 기본 계산 및 검증
+        Money requestedPrice = new Money(dto.getRequestedPrice());
+        Money totalPrice = calculateTotalPrice(dto);
+        Quantity totalQuantity = new Quantity(dto.getRequestedQuantity());
+
+        // 유통량과 비교(Stock과 비교 진행함)
         stock.reserve(totalQuantity);
-        portfolio.buy(totalPrice, totalQuantity);
+        // availableCash, reservedCash update(사용 가능한 금액은 차감, 예약 금액은 상승)
+        portfolio.reserveCash(totalPrice);
+
         // 3. Order 및 StockOrder 생성 및 저장
-        saveSingleBuyOrder(totalQuantity, totalPrice, portfolio, stock);
+        Order savedOrder = createAndSaveSingleOrder(totalQuantity,
+                new Money(dto.getRequestedPrice()), portfolio, stock);
+
+        // +@ 외부 연동 전 flush()
+        orderRepository.flush();
+
+        // 4. KafkaProducer -> 이벤트 발행하는 시점
+        OrderCreatedEvent event = new OrderCreatedEvent(
+                savedOrder.getId(),
+                portfolio.getUser().getId(),
+                portfolio.getId(),
+                stock.getStockCode(),
+                totalQuantity.getQuantityValue(),
+                requestedPrice.getMoneyValue(),
+                OrderType.BUY.name()
+        );
+
+        // 5. 커밋 이후에 발행을 등록함 - registerSynchronization 적용함
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                System.out.println("registerSynchronization on buying");
+                kafkaProducerService.publishOrderCreated(event);
+            }
+        });
     }
 
-    // validate 호출부에서 진행하는 걸로
+    /** 단일 매수 주문 전체 로직 **/
     @Transactional
     public void placeBulkBuyOrder(List<StockOrderRequestDTO> stockOrderRequestDTOList) {
         // List<> 형식의 검증은 DTO 내에서 한번에 처리 불가해서 따로 한번 더 처리함 - Controller 에서 받을 떄 진행하기
+        /******* 수정해야 하는 메서드 ******/
         validateDTOs(stockOrderRequestDTOList);
 
         // 1. User ID 통일성 검증 (다른 유저 ID 섞이면 예외)
@@ -77,11 +118,11 @@ public class BuyStockService {
         Quantity totalQuantity = calculateTotalQuantity(stockOrders);
 
         portfolio.buy(totalPrice, totalQuantity);
-        saveBulkBuyOrder(portfolio, stockOrders, OrderType.BUY, totalPrice);
+        createAndSaveBulkBuyOrder(portfolio, stockOrders, OrderType.BUY, totalPrice);
     }
 
-    private void saveBulkBuyOrder(Portfolio portfolio, List<StockOrder> stockOrders,
-                                  OrderType orderType, Money totalPrice) {
+    private void createAndSaveBulkBuyOrder(Portfolio portfolio, List<StockOrder> stockOrders,
+                                           OrderType orderType, Money totalPrice) {
         orderRepository.save(Order.createBulkBuyOrder(portfolio, stockOrders, orderType, totalPrice));
     }
 
@@ -92,6 +133,7 @@ public class BuyStockService {
                 .reduce(new Quantity(0L), Quantity::plus);
     }
 
+    // Controller 단에서 진행하는 걸로 수정하기
     private void validateDTOs(List<StockOrderRequestDTO> stockOrderRequestDTOList) {
         if (stockOrderRequestDTOList == null || stockOrderRequestDTOList.isEmpty()) {
             throw new IllegalArgumentException("주문 요청 리스트가 비어 있습니다.");
@@ -105,7 +147,7 @@ public class BuyStockService {
     }
 
     /** 락 없이 stockId로 조회를 진행합니다 **/
-    private Stock findStock(Long stockId) {
+    private Stock findStockById(Long stockId) {
         Stock stock = stockRepository.findById(stockId)
                 .orElseThrow(() -> new IllegalArgumentException("Stock not found"));
         return stock;
@@ -125,13 +167,15 @@ public class BuyStockService {
 
 
     /** 단일 매수 주문 저장합니다 **/
-    private void saveSingleBuyOrder(Quantity totalQuantity, Money totalPrice,
-                                    Portfolio portfolio, Stock stock) {
+    private Order createAndSaveSingleOrder(Quantity totalQuantity, Money requestedPrice,
+                                          Portfolio portfolio, Stock stock) {
         // StockOrder / Order 생성
-        StockOrder stockOrder = StockOrder.createStockOrder(stock, totalQuantity, totalPrice, portfolio);
+        StockOrder stockOrder = StockOrder.createStockOrder(stock, totalQuantity, requestedPrice, portfolio);
+        // totalPrice 구해야 함
+        Money totalPrice = requestedPrice.multiply(totalQuantity);
         Order order = Order.createSingleBuyOrder(portfolio, stockOrder, OrderType.BUY, totalPrice);
 
-        orderRepository.save(order);
+        return orderRepository.save(order);
     }
 
     private void validateIfSameUser(List<StockOrderRequestDTO> stockOrderRequestDTOList, Long firstUserId) {

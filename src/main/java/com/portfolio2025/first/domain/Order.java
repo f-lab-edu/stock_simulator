@@ -8,6 +8,8 @@ import com.portfolio2025.first.domain.vo.Money;
 import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
+import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -49,6 +51,7 @@ public class Order {
     @Column(name = "order_type", nullable = false)
     private OrderType orderType;  // BUY / SELL 등
 
+    @Embedded
     @Column(name = "total_price", nullable = false)
     @AttributeOverride(name = "moneyValue", column = @Column(name = "total_price"))
     private Money totalPrice;  // 하위 StockOrder 총 주문 금액

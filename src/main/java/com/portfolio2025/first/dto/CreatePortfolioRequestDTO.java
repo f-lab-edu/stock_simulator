@@ -5,6 +5,10 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 
+/**
+ * 포트폴리오 생성시 입력 데이터
+ */
+
 @Getter
 @Setter
 @AllArgsConstructor

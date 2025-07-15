@@ -35,7 +35,6 @@ public class User {
     private String userId;
 
     private String location;
-
     @Column(name = "phone_number")
     private String phoneNumber;
     private String email;
@@ -46,8 +45,9 @@ public class User {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    // 양방향으로 처리하기
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Portfolio> portfolios = new ArrayList<>(); // 양방향으로 처리하기
+    private List<Portfolio> portfolios = new ArrayList<>();
 
     @Builder
     private User(String name, String location, String phoneNumber, String email, String userId) {

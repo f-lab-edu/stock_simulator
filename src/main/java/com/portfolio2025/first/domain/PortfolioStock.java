@@ -42,12 +42,18 @@ public class PortfolioStock {
     @JoinColumn(name = "stock_id", nullable = false)
     private Stock stock;
 
+    // 보유하고 있는 특정 종목의 수량
     @Embedded
-    @AttributeOverride(name = "quantity_value", column = @Column(name = "portfolio_quantity", nullable = false))
+    @AttributeOverride(name = "quantityValue", column = @Column(name = "portfolio_quantity", nullable = false))
     private Quantity portfolioQuantity;
 
+    // 예약 수량 (중복 매도 수량 방지 위함)
     @Embedded
-    @AttributeOverride(name = "price_value", column = @Column(name = "portfolio_average_price", nullable = false))
+    @AttributeOverride(name = "quantityValue", column = @Column(name = "reserved_quantity", nullable = false))
+    private Quantity reservedQuantity = new Quantity(0L);
+
+    @Embedded
+    @AttributeOverride(name = "priceValue", column = @Column(name = "portfolio_average_price", nullable = false))
     private Money portfolioAveragePrice;
 
     @Column(name = "last_updated_at")
@@ -100,19 +106,37 @@ public class PortfolioStock {
         this.lastUpdatedAt = LocalDateTime.now();
     }
 
-    public boolean decreaseQuantity(Quantity soldQuantity) {
-        long currentQty = this.portfolioQuantity.getQuantityValue();
-        long toSellQty = soldQuantity.getQuantityValue();
-
-        if (toSellQty > currentQty) {
-            throw new IllegalArgumentException("보유 수량보다 많이 팔 수 없습니다.");
+    public boolean decreaseQuantity(Quantity executed) {
+        if (executed.getQuantityValue() > this.portfolioQuantity.getQuantityValue()) {
+            throw new IllegalArgumentException("보유 수량보다 많이 차감할 수 없습니다.");
         }
 
-        long updatedQty = currentQty - toSellQty;
-        this.portfolioQuantity = new Quantity(updatedQty);
+        this.portfolioQuantity = this.portfolioQuantity.minus(executed);
+        this.reservedQuantity = this.reservedQuantity.minus(executed);
         this.lastUpdatedAt = LocalDateTime.now();
 
-        return updatedQty == 0;  // ❗ 수량이 0이면 true 반환 (삭제용)
+        return this.portfolioQuantity.isZero();
+    }
+
+    public boolean hasNotEnough(Quantity otherQuantity) {
+        return portfolioQuantity.isLowerThan(otherQuantity);
+    }
+
+    // 이중 매도 방지하기 위한 reserve 메서드
+    public void reserve(Quantity requested) {
+        // 1. 먼저 현재 거래 가능한 수량과 예약 수량을 비교함 - 거래가 지속적으로 가능한 상태인지 먼저 확인한다
+        Quantity available = this.portfolioQuantity.minus(this.reservedQuantity);
+
+        // 2. 거래 가능한 수량(존재 수량 - 예약 수량)과 requested 비교하기 때문에 문제 발생하지 않음
+        if (available.isLowerThan(requested)) {
+            throw new IllegalArgumentException("예약할 수 있는 수량이 부족합니다. [보유: "
+                    + this.portfolioQuantity.getQuantityValue() + ", 예약됨: "
+                    + this.reservedQuantity.getQuantityValue() + ", 요청: "
+                    + requested.getQuantityValue() + "]");
+        }
+
+        this.reservedQuantity = this.reservedQuantity.plus(requested);
+        this.lastUpdatedAt = LocalDateTime.now();
     }
 }
 

@@ -8,12 +8,23 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: create-drop
-    show-sql: true
+      ddl-auto: create
+    show-sql: false
     properties:
       hibernate:
-        format_sql: true
+        format_sql: false
     database-platform: org.hibernate.dialect.MySQLDialect
+
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      auto-offset-reset: earliest
+
+logging:
+  level:
+    org.apache.kafka.clients.producer.ProducerConfig: WARN
+#    org.apache.kafka: DEBUG
+#    org.springframework.kafka: DEBUG
 
 server:
   port: 8080

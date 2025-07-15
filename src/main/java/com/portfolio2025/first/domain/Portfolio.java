@@ -62,6 +62,11 @@ public class Portfolio {
     @AttributeOverride(name = "moneyValue", column = @Column(name = "available_cash", nullable = false))
     private Money availableCash;
 
+    // 매수 주문 시 예약된 금액
+    @Embedded
+    @AttributeOverride(name = "moneyValue", column = @Column(name = "reserved_cash", nullable = false))
+    private Money reservedCash = new Money(0L);
+
     // 포트폴리오 생성일/수정일
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
@@ -109,9 +114,10 @@ public class Portfolio {
     public void buy(Money totalPrice, Quantity totalQuantity) {
         // 검증 진행하고 + 차감하기
         validateSufficientCash(totalPrice);
-        validateTotalQuantityLimit(totalQuantity); // 확장 고려 (수량 상 제한이 존재하는 경우)
+        // 확장 고려 (수량 상 제한이 존재하는 경우)
+        validateTotalQuantityLimit(totalQuantity);
 
-        deductCash(totalPrice);
+        deductCash(totalPrice); // -> 예약 설정으로 바꾸는건 어떤지??
     }
 
     private void validateTotalQuantityLimit(Quantity totalQuantity) {
@@ -126,6 +132,23 @@ public class Portfolio {
 
     private void deductCash(Money totalPrice) {
         this.availableCash = this.availableCash.minus(totalPrice);
+    }
+
+    public void reserveCash(Money amount) {
+        validateSufficientCash(amount);
+        this.availableCash = this.availableCash.minus(amount);
+        this.reservedCash = this.reservedCash.plus(amount);
+    }
+
+    public void releaseCash(Money amount) {
+        this.availableCash = this.availableCash.plus(amount);
+        this.reservedCash = this.reservedCash.minus(amount);
+    }
+
+    public void releaseAndDeductCash(Money amount) {
+        this.reservedCash = this.reservedCash.minus(amount);
+        // 실 차감 처리
+        this.availableCash = this.availableCash.minus(amount);
     }
 }
 

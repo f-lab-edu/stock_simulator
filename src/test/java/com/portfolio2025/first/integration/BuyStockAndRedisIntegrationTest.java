@@ -2,7 +2,6 @@ package com.portfolio2025.first.integration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.portfolio2025.first.converter.StockOrderRedisConverter;
 import com.portfolio2025.first.domain.Account;
 import com.portfolio2025.first.domain.Order;
 import com.portfolio2025.first.domain.Portfolio;
@@ -24,7 +23,6 @@ import com.portfolio2025.first.service.BuyStockService;
 import com.portfolio2025.first.service.RedisStockOrderService;
 import java.time.LocalDateTime;
 import java.util.Optional;
-import javax.sound.sampled.Port;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -47,7 +45,6 @@ class BuyStockAndRedisIntegrationTest {
     @Autowired private OrderRepository orderRepository;
     @Autowired private PortfolioRepository portfolioRepository;
     @Autowired private RedisTemplate<String, String> redisTemplate;
-    @Autowired private StockOrderRedisConverter converter;
 
     private User user;
     private Stock samsung;
@@ -81,10 +78,10 @@ class BuyStockAndRedisIntegrationTest {
                 4000_000L));
     }
 
-//    @AfterEach
-//    void tearDown() {
-//        redisTemplate.delete("BUY_QUEUE_005930");
-//    }
+    @AfterEach
+    void tearDown() {
+        redisTemplate.delete("BUY_QUEUE_005930");
+    }
 
     @Test
     void 단건_매수_주문이_DB에_저장되고_Redis에도_등록된다() {
@@ -103,7 +100,7 @@ class BuyStockAndRedisIntegrationTest {
         Optional<Order> order = orderRepository.findById(1L);
 
         redisStockOrderService.pushBuyOrderDTO(
-                converter.toDTO(order.get().getStockOrders().getFirst()));
+                StockOrderRedisDTO.from(order.get().getStockOrders().getFirst()));
 
         // Then: Redis에 값이 잘 들어갔는지 확인
         Long redisCount = redisTemplate.opsForZSet().size("BUY_QUEUE_005930");
@@ -116,8 +113,10 @@ class BuyStockAndRedisIntegrationTest {
 
         assertThat(dto.getStockCode()).isEqualTo("005930");
         assertThat(dto.getRemainQuantity()).isEqualTo(3L);
-        assertThat(dto.getRequestedPrice()).isEqualTo(3L * 95000L);
+        assertThat(dto.getRequestedPrice()).isEqualTo(95000L);
         assertThat(dto.getId()).isEqualTo(this.user.getId());
+
+        assertThat(order.get().getTotalPrice()).isEqualTo(new Money(3L * 95000L));
     }
 
     @Test

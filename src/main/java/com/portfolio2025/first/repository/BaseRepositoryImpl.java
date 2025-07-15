@@ -34,4 +34,9 @@ public abstract class BaseRepositoryImpl<T, ID> implements BaseRepository<T, ID>
     public void delete(T entity) {
         em.remove(entity);
     }
+
+    @Override
+    public void flush() {
+        em.flush();
+    }
 }

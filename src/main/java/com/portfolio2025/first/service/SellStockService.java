@@ -21,6 +21,17 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+/**
+ * 매도 관련 로직
+ * placeSingleBuyOrder(StockOrderRequestDTO):
+ * 1. User, Portfolio, Stock 조회
+ * 2. 수량·금액 계산 및 유효성 검사
+ * 3. 보유 주식 유효성 검증 + 예약 처리
+ * 4. 주문 및 주문 상세 생성 및 저장
+ * 5. Kafka 이벤트 구성
+ * 6. 커밋 이후 Kafka 메시지 발행 (registerSynchronization)
+ * **/
+
 @Service
 @RequiredArgsConstructor
 public class SellStockService {

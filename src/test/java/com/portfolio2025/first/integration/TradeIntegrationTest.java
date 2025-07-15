@@ -76,6 +76,7 @@ public class TradeIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        /** userA - 매수자 **/
         userA = userRepository.save(User.createUser("sunghun", "suwon",
                 "010-1234-5678", "test@email.com", "pw"));
         CreateAccountRequestDTO dtoA =
@@ -92,7 +93,7 @@ public class TradeIntegrationTest {
                 this.buyPortfolio.getId(),
                 4000_000L));
 
-        /***************************/
+        /** userB - 매도자 **/
         userB = userRepository.save(User.createUser("sungsung", "seoul",
                 "010-5678-0000", "test@naver.com", "pw12345"));
         CreateAccountRequestDTO dtoB =
@@ -129,8 +130,24 @@ public class TradeIntegrationTest {
     }
 
 
+    /**
+     *
+     * [질문 1]
+     * Q) 일시적으로 Order not Found 문제점이 발생하는 이유? :
+     *    - 매수, 매도 주문 중간에 flush() 했음에도 간혹 Order not found 에러가 발생합니다. 왜 이럴까요??
+     *
+     * [질문 2]
+     * Q) Kafka event (order.created)가 2번 정상적으로 발행되는 과정 로그로 확인 완료했지만, 실질적으로 소비가 첫번째 주문만 되는 현상
+     *    - 매수 주문 관련된 데이터가 Redis에 정상적으로 반영된 걸 확인했음에도, 매도 주문 데이터가 계속 반영되지 못하는 현상
+     *    - Kafka event 발행 그리고 소비와 관련된 테스트 코드를 작성할 때 고려할 사항이 있을까요??
+     *
+     *
+     *
+     */
+
     @Test
     void testOrderMatchingFlow() throws Exception {
+        // Kafka 이벤트가 정상적으로 발행되는지 확인 -> 정상적으로 소비되는지 확인하기
         StockOrderRequestDTO buyTestDTO = new StockOrderRequestDTO(
                 samsung.getStockCode(),
                 2L,
@@ -144,7 +161,7 @@ public class TradeIntegrationTest {
                 userB.getId()
         );
 
-        // ✅ 0. Latch 설정 (StockOrder가 총 2개 발행 → 매수 1, 매도 1)
+        // 0. Latch 설정 (StockOrder가 총 2개 발행 → 매수 1, 매도 1)
         OrderPrepareConsumer.latch = new CountDownLatch(2);
 
         // 1. 매수자 A가 삼성전자 2주 매수 (100만원/주)
@@ -157,12 +174,13 @@ public class TradeIntegrationTest {
         // 3. 매도자 B가 삼성전자 2주 매도 (100만원  /주)
         sellStockService.placeSingleSellOrder(sellTestDTO);
 
-        // ✅ 5. Kafka 메시지 처리 대기
-        // 대체 코드: 10초를 밀리초 단위로 직접 전달
+
+
+        // 4. Kafka 메시지 처리 대기
         boolean completed = OrderPrepareConsumer.latch.await(10, TimeUnit.SECONDS); // milliseconds
         assertTrue(completed, "Kafka 메시지 처리 완료 실패");
 
-        // ✅ 6. latch 초기화 (다음 테스트에 영향 방지)
+        // 5. latch 초기화 (다음 테스트에 영향 방지)
         OrderPrepareConsumer.latch = null;
 
 

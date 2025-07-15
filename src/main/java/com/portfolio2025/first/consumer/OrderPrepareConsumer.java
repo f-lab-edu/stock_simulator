@@ -58,15 +58,13 @@ public class OrderPrepareConsumer {
                     // Redis 반영 -> Kafka match request (트리거 역할 수행한다)
                     System.out.println("validating and registering to redis...");
                     orderPrepareService.validateAndRegisterToRedis(stockOrder, OrderType.valueOf(event.getOrderType()));
+//                    kafkaProducerService.publishMatchRequest(stockOrder.getStock().getStockCode());
 
                     // ✅ latch countDown: 성공한 경우에만 처리
                     if (latch != null) {
                         latch.countDown();
                     }
 
-
-
-//                    kafkaProducerService.publishMatchRequest(stockOrder.getStock().getStockCode());
                 } catch (Exception e) {
                     log.error("[OrderPrepareConsumer] Redis 등록 실패: stockOrderId={}, 이유={}", stockOrder.getId(),
                             e.getMessage());

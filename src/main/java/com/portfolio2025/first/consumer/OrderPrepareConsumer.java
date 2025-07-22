@@ -1,5 +1,6 @@
 package com.portfolio2025.first.consumer;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.portfolio2025.first.domain.Order;
 import com.portfolio2025.first.domain.order.OrderType;
@@ -8,10 +9,10 @@ import com.portfolio2025.first.dto.event.OrderCreatedEvent;
 import com.portfolio2025.first.repository.OrderRepository;
 import com.portfolio2025.first.service.KafkaProducerService;
 import com.portfolio2025.first.service.OrderPrepareService;
-import java.util.concurrent.CountDownLatch;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.stereotype.Component;
 
 /**
@@ -31,50 +32,70 @@ public class OrderPrepareConsumer {
     private final KafkaProducerService kafkaProducerService;
     private final ObjectMapper objectMapper;
 
-    // ✅ 테스트용 latch (테스트 클래스에서 직접 설정 가능)
-    public static CountDownLatch latch;
 
     @KafkaListener(
             topics = "order.created",
             groupId = "order-prepare-group",
+            concurrency ="2",
             containerFactory = "stringKafkaListenerContainerFactory"
     )
-    public void consumeOrderCreated(String message) {
+    public void consumeOrderCreated(String message, Acknowledgment ack) throws InterruptedException {
+        log.info("🟢 Kafka Received: {}", message);
+
+        OrderCreatedEvent event = null;
         try {
-            log.info("[Kafka] Received order.created: {}", message);
-            OrderCreatedEvent event = objectMapper.readValue(message, OrderCreatedEvent.class);
+            event = objectMapper.readValue(message, OrderCreatedEvent.class);
+            log.info("🟢 Parsed OrderCreatedEvent: {}", event);
+        } catch (JsonProcessingException e) {
+            log.error("❌ Failed to parse JSON", e);
+            return;
+        }
 
-            // 1. Order 조회
-            System.out.println("finding stockOrder");
-            Order order = orderRepository.findByIdWithStockOrders(event.getOrderId())
-                    .orElseThrow(() -> new IllegalArgumentException("Order not found: " + event.getOrderId()));
+        Order order = null;
+        int retry = 0;
+        while (retry < 5) {
+            order = orderRepository.findByIdWithStockOrders(event.getOrderId()).orElse(null);
+            log.info("🔁 Try {}: order = {}", retry, order);
+            if (order != null)
+                break;
+            Thread.sleep(200);
+            retry++;
+        }
 
-            System.out.println("order.getStockOrders() = " + order.getStockOrders());
+        if (order == null) {
+            log.error("❌ Order not found in DB even after retries: orderId={}", event.getOrderId());
+            return;
+        }
 
+        if (order.getStockOrders() == null) {
+            log.error("❌ StockOrders is NULL");
+            return;
+        }
 
-            // 2. 각 StockOrder를 Redis에 등록
+        if (order.getStockOrders().isEmpty()) {
+            log.error("❌ StockOrders is EMPTY");
+            return;
+        }
+
+        try {
             for (StockOrder stockOrder : order.getStockOrders()) {
-                try {
-                    // Redis 반영 -> Kafka match request (트리거 역할 수행한다)
-                    System.out.println("validating and registering to redis...");
-                    orderPrepareService.validateAndRegisterToRedis(stockOrder, OrderType.valueOf(event.getOrderType()));
-//                    kafkaProducerService.publishMatchRequest(stockOrder.getStock().getStockCode());
-
-                    // ✅ latch countDown: 성공한 경우에만 처리
-                    if (latch != null) {
-                        latch.countDown();
-                    }
-
-                } catch (Exception e) {
-                    log.error("[OrderPrepareConsumer] Redis 등록 실패: stockOrderId={}, 이유={}", stockOrder.getId(),
-                            e.getMessage());
-
-                    // DLQ or 재처리 어떻게 할지?
-                }
+                log.info("🟢 Validating stockOrder: {}", stockOrder.getId());
+                // Redis에 반영 (주문 하나라도 반영되는 순간 Kafka 이벤트 요청해서 match를 요청함)
+                orderPrepareService.validateAndRegisterToRedis(stockOrder, OrderType.valueOf(event.getOrderType()));
+                // 체결을 위한 Kafka 이벤트 요청
+                kafkaProducerService.publishMatchRequest(stockOrder.getStock().getStockCode());
             }
+
+
         } catch (Exception e) {
-            log.error("[Kafka] order.created 메시지 파싱 실패: message={}, 이유={}", message, e.getMessage(), e);
-            // TODO: DLQ 또는 에러 처리 로직
+            // ❌ 커밋하지 않음 → 재처리 대상
+            log.error("❌ Error while processing stockOrders: {}", e.getMessage());
+            // 재발행하는 경우 Idempotency는 어떻게 구성할지 생각할 수 있어야 함.
+        } finally {
+
+            // ✅ 모든 처리 완료 후 커밋
+            ack.acknowledge();
+            log.info("✅ Kafka offset manually committed");
         }
     }
 }

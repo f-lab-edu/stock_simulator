@@ -39,19 +39,19 @@ public class Trade {
 
     @Embedded
     @AttributeOverride(name = "moneyValue", column = @Column(name = "trade_price", nullable = false))
-    private Money tradePrice;
+    private Money tradePrice; // 거래 단위 당 금액(주당 가격)
 
     @Embedded
     @AttributeOverride(name = "quantityValue", column = @Column(name = "trade_quantity", nullable = false))
-    private Quantity tradeQuantity;
+    private Quantity tradeQuantity; // 거래 수량
 
     @Embedded
     @AttributeOverride(name = "moneyValue", column = @Column(name = "trade_amount", nullable = false))
-    private Money tradeAmount;
+    private Money tradeAmount; // tradePrice * tradeQuantity (거래 금액)
 
     private LocalDateTime tradedAt; // 체결 주문의 체결 시간
     private LocalDateTime createdAt; // DB 저장하는 시간
-    private LocalDateTime updatedAt; // 백업하는 용도?
+    private LocalDateTime updatedAt; // 수정 시각
 
     @Builder
     private Trade(StockOrder buyOrder, StockOrder sellOrder, Stock stock, Money tradePrice,

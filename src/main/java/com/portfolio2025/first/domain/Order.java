@@ -45,7 +45,7 @@ public class Order {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "order_status", nullable = false)
-    private OrderStatus orderStatus;
+    private OrderStatus orderStatus; // CREATED(생성 완료) - PROCESSING(진행중 + 부분체결) - COMPLETED(완료) - CANCELLED(삭제완료)
 
     @Enumerated(EnumType.STRING)
     @Column(name = "order_type", nullable = false)

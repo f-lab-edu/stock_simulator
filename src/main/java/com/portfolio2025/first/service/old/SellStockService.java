@@ -1,4 +1,4 @@
-package com.portfolio2025.first.service;
+package com.portfolio2025.first.service.old;
 
 import com.portfolio2025.first.domain.Order;
 import com.portfolio2025.first.domain.Portfolio;
@@ -15,6 +15,7 @@ import com.portfolio2025.first.repository.OrderRepository;
 import com.portfolio2025.first.repository.PortfolioStockRepository;
 import com.portfolio2025.first.repository.StockRepository;
 import com.portfolio2025.first.repository.UserRepository;
+import com.portfolio2025.first.service.KafkaProducerService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

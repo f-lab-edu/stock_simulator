@@ -6,6 +6,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 로깅 추가, 발행 실패한 경우에 대한 상황도 고려해서 수정함
@@ -19,6 +21,7 @@ public class KafkaProducerService {
     private final KafkaTemplate<String, String> stringKafkaTemplate; // Match 트리거 역할
     private final ObjectMapper objectMapper;
 
+    @Transactional(propagation = Propagation.REQUIRES_NEW) // 새로운 트랜잭션 시작
     public void publishOrderCreated(OrderCreatedEvent event) {
         try {
             String json = objectMapper.writeValueAsString(event);

@@ -20,7 +20,7 @@ public class MatchRequestConsumer {
     public void consumeMatchRequest(String stockCode) {
         try {
             log.info("[Kafka] Received match.request for stockCode: {}", stockCode);
-            tradeService.match(stockCode);
+            tradeService.matchWithLock(stockCode);
 
         } catch (Exception e) {
             log.error("[Kafka] Error while processing match.request: stockCode={}, reason={}", stockCode, e.getMessage(), e);

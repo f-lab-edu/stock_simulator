@@ -31,6 +31,7 @@ dependencies {
 	implementation 'com.fasterxml.jackson.core:jackson-databind:2.19.0'
 	implementation 'org.springframework.kafka:spring-kafka'
 	implementation 'org.redisson:redisson-spring-boot-starter:3.23.5' // 버전은 최신 확인
+	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 
 	compileOnly 'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'

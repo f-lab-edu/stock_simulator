@@ -9,7 +9,8 @@ import lombok.ToString;
 
 /**
  * StockOrder 생성시 Event 발행, 데이터 구조 형태
- * Consumer에서 인자로 받은 데이터 구조로 생각하기
+ * Consumer에서 인자로 받은 데이터 구조
+ * MatchRequest, OrderPrepare
  */
 
 @Getter

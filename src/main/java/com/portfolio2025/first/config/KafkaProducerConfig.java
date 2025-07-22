@@ -15,6 +15,8 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.support.serializer.JsonSerializer;
 
+// Config 간 순서 있는지 확인해보기
+
 @Configuration
 public class KafkaProducerConfig {
 
@@ -22,7 +24,7 @@ public class KafkaProducerConfig {
     public NewTopic matchRequestTopic() {
         // match.request 토픽 발행해두기
         return TopicBuilder.name("match.request")
-                .partitions(3)
+                .partitions(2)
                 .replicas(1)  // 운영 시 2 이상 권장
                 .build();
     }
@@ -31,7 +33,7 @@ public class KafkaProducerConfig {
     @Bean
     public NewTopic orderCreatedTopic() {
         return TopicBuilder.name("order.created")
-                .partitions(3)
+                .partitions(2)
                 .replicas(1)
                 .build();
     }

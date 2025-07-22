@@ -125,13 +125,29 @@ public class RedisStockOrderService {
         Optional<StockOrderRedisDTO> buyStockOrderDTO = popBestBuyOrder(stockCode);
         Optional<StockOrderRedisDTO> sellStockOrderDTO = popBestSellOrder(stockCode);
 
-        if (buyStockOrderDTO.isEmpty() || sellStockOrderDTO.isEmpty()) {
-            System.out.println("[popMatchPair] sellStockOrderDTO.isEmpty() : " + sellStockOrderDTO.isEmpty());
-            System.out.println("[popMatchPair] buyStockOrderDTO.isEmpty() : " + buyStockOrderDTO.isEmpty());
+        boolean isBuyEmpty = buyStockOrderDTO.isEmpty();
+        boolean isSellEmpty = sellStockOrderDTO.isEmpty();
 
+        if (isBuyEmpty && isSellEmpty) {
+            System.out.println("[popMatchPair] 매수/매도 모두 없음");
             return Optional.empty();
         }
 
+        if (isBuyEmpty) {
+            // 매도 주문만 있음 → 복원
+            pushSellOrderDTO(sellStockOrderDTO.get());
+            System.out.println("[popMatchPair] 매수 없음 → 매도 주문 복원");
+            return Optional.empty();
+        }
+
+        if (isSellEmpty) {
+            // 매수 주문만 있음 → 복원
+            pushBuyOrderDTO(buyStockOrderDTO.get());
+            System.out.println("[popMatchPair] 매도 없음 → 매수 주문 복원");
+            return Optional.empty();
+        }
+
+        // 둘 다 존재 → MatchingPair 반환
         return Optional.of(new MatchingPair(buyStockOrderDTO.get(), sellStockOrderDTO.get()));
     }
 

@@ -8,8 +8,8 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 @Getter
 public class MatchingPair {
-    private final StockOrderRedisDTO buyDTO;
-    private final StockOrderRedisDTO sellDTO;
+    private final StockOrderRedisDTO buyDTO; // REDIS에서 추출된 매수 DTO
+    private final StockOrderRedisDTO sellDTO; // REDIS에서 추출된 매도 DTO
 
     public boolean isPriceMatchable() {
         return buyDTO.getRequestedPrice() >= sellDTO.getRequestedPrice();

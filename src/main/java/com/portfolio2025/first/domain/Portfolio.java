@@ -42,41 +42,41 @@ public class Portfolio {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // 사용자 연관 (다대일)
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    private User user; // 사용자 연관 (다대일)
 
-    // 포트폴리오 유형 (실전, 모의 등)
+
     @Enumerated(EnumType.STRING)
     @Column(name = "portfolio_type", nullable = false)
-    private PortfolioType portfolioType;
+    private PortfolioType portfolioType; // 포트폴리오 유형 (실전, 모의 등)
 
-    // 총 평가금액 (현금 + 주식 현재가 기준)
+
     @Embedded
     @AttributeOverride(name = "moneyValue", column = @Column(name = "portfolio_total_value", nullable = false))
-    private Money portfolioTotalValue;
+    private Money portfolioTotalValue; // 총 평가금액 (현금 + 주식 현재가 기준)
 
-    // 거래 가능한 현금
+
     @Embedded
     @AttributeOverride(name = "moneyValue", column = @Column(name = "available_cash", nullable = false))
-    private Money availableCash;
+    private Money availableCash; // 거래 가능한 현금
 
-    // 매수 주문 시 예약된 금액
+
     @Embedded
     @AttributeOverride(name = "moneyValue", column = @Column(name = "reserved_cash", nullable = false))
-    private Money reservedCash = new Money(0L);
+    private Money reservedCash = new Money(0L); // 매수 주문 시 예약된 금액
 
-    // 포트폴리오 생성일/수정일
+
     @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
+    private LocalDateTime createdAt; // 포트폴리오 생성일/수정일
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    // PortfolioStock 연관 (보유 주식 내역)
+
     @OneToMany(mappedBy = "portfolio", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<PortfolioStock> portfolioStocks = new ArrayList<>();
+    private List<PortfolioStock> portfolioStocks = new ArrayList<>(); // PortfolioStock 연관 (보유 주식 내역)
 
 
     @Builder
@@ -149,6 +149,12 @@ public class Portfolio {
         this.reservedCash = this.reservedCash.minus(amount);
         // 실 차감 처리
         this.availableCash = this.availableCash.minus(amount);
+    }
+
+    // 매칭에 실패한 경우 -> Batch로 처리하는 방식도 생각해봐야 함
+    public void cancelReservation(Money amount) {
+        this.reservedCash = this.reservedCash.minus(amount);
+        this.availableCash = this.availableCash.plus(amount);
     }
 }
 

@@ -1,4 +1,4 @@
-package com.portfolio2025.first.service;
+package com.portfolio2025.first.service.old;
 
 import com.portfolio2025.first.domain.Order;
 import com.portfolio2025.first.domain.Portfolio;
@@ -16,10 +16,9 @@ import com.portfolio2025.first.repository.UserRepository;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 
 /**
@@ -41,53 +40,50 @@ public class BuyStockService {
     private final UserRepository userRepository;
     private final StockRepository stockRepository;
     private final OrderRepository orderRepository;
-    private final KafkaProducerService kafkaProducerService;
+
+//    private final OrderEventPublisher orderEventPublisher;
+    private final ApplicationEventPublisher eventPublisher;
 
     /** 단일 매수 주문 전체 로직 **/
     @Transactional
     public void placeSingleBuyOrder(StockOrderRequestDTO dto) {
         // 1. 조회
         User user = findUserWithLock(dto.getUserId());
-        Portfolio portfolio = user.getDefaultPortfolio()
-                .orElseThrow(() -> new IllegalArgumentException("투자용 포트폴리오가 존재하지 않습니다."));
+        Portfolio portfolio = getDefaultPortfolio(user);
         Stock stock = findStockByStockCode(dto.getStockCode());
 
         // 2. 기본 계산 및 검증
-        Money requestedPrice = new Money(dto.getRequestedPrice());
+        Money unitPrice = new Money(dto.getRequestedPrice());
+        Quantity quantity = new Quantity(dto.getRequestedQuantity());
         Money totalPrice = calculateTotalPrice(dto);
-        Quantity totalQuantity = new Quantity(dto.getRequestedQuantity());
 
         // 유통량과 비교(Stock과 비교 진행함)
-        stock.reserve(totalQuantity);
+        stock.reserve(quantity);
         // availableCash, reservedCash update(사용 가능한 금액은 차감, 예약 금액은 상승)
         portfolio.reserveCash(totalPrice);
 
         // 3. Order 및 StockOrder 생성 및 저장
-        Order savedOrder = createAndSaveSingleOrder(totalQuantity,
-                new Money(dto.getRequestedPrice()), portfolio, stock);
-
-        // +@ 외부 연동 전 flush()
+        Order order = createBuyOrder(portfolio, stock, quantity, unitPrice);
+        orderRepository.save(order);
         orderRepository.flush();
 
         // 4. KafkaProducer -> 이벤트 발행하는 시점
         OrderCreatedEvent event = new OrderCreatedEvent(
-                savedOrder.getId(),
-                portfolio.getUser().getId(),
+                order.getId(),
+                user.getId(),
                 portfolio.getId(),
                 stock.getStockCode(),
-                totalQuantity.getQuantityValue(),
-                requestedPrice.getMoneyValue(),
+                quantity.getQuantityValue(),
+                unitPrice.getMoneyValue(),
                 OrderType.BUY.name()
         );
 
-        // 5. 커밋 이후에 발행을 등록함 - registerSynchronization 적용함
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                System.out.println("registerSynchronization on buying");
-                kafkaProducerService.publishOrderCreated(event);
-            }
-        });
+        eventPublisher.publishEvent(event);
+    }
+
+    private Portfolio getDefaultPortfolio(User user) {
+        return user.getDefaultPortfolio()
+                .orElseThrow(() -> new IllegalArgumentException("투자용 포트폴리오가 존재하지 않습니다."));
     }
 
     /** 단일 매수 주문 전체 로직 **/
@@ -103,8 +99,7 @@ public class BuyStockService {
 
         // 2. 유저 조회 (Lock)
         User user = findUserWithLock(firstUserId);
-        Portfolio portfolio = user.getDefaultPortfolio()
-                .orElseThrow(() -> new IllegalArgumentException("투자용 포트폴리오가 존재하지 않습니다."));
+        Portfolio portfolio = getDefaultPortfolio(user);
 
         // 💡 stockOrder 생성
         List<StockOrder> stockOrders = stockOrderRequestDTOList.stream()
@@ -171,6 +166,12 @@ public class BuyStockService {
         return new Money(stockOrderRequestDTO.getRequestedPrice() * stockOrderRequestDTO.getRequestedQuantity());
     }
 
+    /** 단일 매수 주문 생성합니다 **/
+    private Order createBuyOrder(Portfolio portfolio, Stock stock, Quantity quantity, Money unitPrice) {
+        StockOrder stockOrder = StockOrder.createStockOrder(stock, quantity, unitPrice, portfolio);
+        Money totalPrice = unitPrice.multiply(quantity);
+        return Order.createSingleBuyOrder(portfolio, stockOrder, OrderType.BUY, totalPrice);
+    }
 
     /** 단일 매수 주문 저장합니다 **/
     private Order createAndSaveSingleOrder(Quantity totalQuantity, Money requestedPrice,

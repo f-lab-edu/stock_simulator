@@ -57,7 +57,7 @@ public class PortfolioStock {
     private Money portfolioAveragePrice;
 
     @Column(name = "last_updated_at")
-    private LocalDateTime lastUpdatedAt;
+    private LocalDateTime lastUpdatedAt; // 마지막 업데이트 한 시각 (Timeout 용도로 설정 가능함)
 
     @Builder
     private PortfolioStock(Portfolio portfolio, Stock stock, Quantity portfolioQuantity,
@@ -85,10 +85,6 @@ public class PortfolioStock {
         return new Money(portfolioQuantity.getQuantityValue() * portfolioAveragePrice.getMoneyValue());
     }
 
-    /** 양방향 편의 메서드 **/
-    public void setPortfolio(Portfolio portfolio) {
-        this.portfolio = portfolio;
-    }
 
     public void addQuantity(Quantity addedQuantity, Money executedPrice) {
         long currentQty = this.portfolioQuantity.getQuantityValue();

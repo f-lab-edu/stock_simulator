@@ -20,6 +20,7 @@ import com.portfolio2025.first.repository.OrderRepository;
 import com.portfolio2025.first.repository.StockOrderRepository;
 import com.portfolio2025.first.repository.StockRepository;
 import com.portfolio2025.first.repository.UserRepository;
+import com.portfolio2025.first.service.old.BuyStockService;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

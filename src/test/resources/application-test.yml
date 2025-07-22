@@ -19,12 +19,15 @@ spring:
     bootstrap-servers: localhost:9092
     consumer:
       auto-offset-reset: earliest
+      enable-auto-commit: false
+    listener:
+      ack-mode: manual # record - 메세지당 자동 커밋, manual - 수동 커밋 설정
 
 logging:
   level:
     org.apache.kafka.clients.producer.ProducerConfig: WARN
-#    org.apache.kafka: DEBUG
-#    org.springframework.kafka: DEBUG
+    org.springframework.kafka: DEBUG
+    #    org.apache.kafka: DEBUG
 
 server:
   port: 8080

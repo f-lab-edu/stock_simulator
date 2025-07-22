@@ -19,7 +19,7 @@ import com.portfolio2025.first.repository.PortfolioRepository;
 import com.portfolio2025.first.repository.StockRepository;
 import com.portfolio2025.first.repository.UserRepository;
 import com.portfolio2025.first.service.AccountService;
-import com.portfolio2025.first.service.BuyStockService;
+import com.portfolio2025.first.service.old.BuyStockService;
 import com.portfolio2025.first.service.RedisStockOrderService;
 import java.time.LocalDateTime;
 import java.util.Optional;

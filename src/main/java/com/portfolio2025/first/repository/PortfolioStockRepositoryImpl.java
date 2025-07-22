@@ -4,6 +4,7 @@ import com.portfolio2025.first.domain.Portfolio;
 import com.portfolio2025.first.domain.PortfolioStock;
 import com.portfolio2025.first.domain.stock.Stock;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Repository;
@@ -14,6 +15,7 @@ public class PortfolioStockRepositoryImpl extends BaseRepositoryImpl <PortfolioS
         super(em, PortfolioStock.class);
     }
 
+    // PESSIMISTIC_WRITE - DB 락 반영함
     @Override
     public Optional<PortfolioStock> findByPortfolioAndStock(Portfolio portfolio, Stock stock) {
         String jqpl = "select ps from PortfolioStock ps where "
@@ -22,6 +24,7 @@ public class PortfolioStockRepositoryImpl extends BaseRepositoryImpl <PortfolioS
         List<PortfolioStock> resultList = em.createQuery(jqpl, PortfolioStock.class)
                 .setParameter("portfolio", portfolio)
                 .setParameter("stock", stock)
+                .setLockMode(LockModeType.PESSIMISTIC_WRITE)
                 .getResultList();
 
         return resultList.stream().findFirst();

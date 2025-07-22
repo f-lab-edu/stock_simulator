@@ -2,6 +2,7 @@ package com.portfolio2025.first.service;
 
 import static jodd.util.ThreadUtil.sleep;
 
+import com.portfolio2025.first.domain.MatchingContext;
 import com.portfolio2025.first.domain.MatchingPair;
 import com.portfolio2025.first.domain.Portfolio;
 import com.portfolio2025.first.domain.PortfolioStock;
@@ -138,46 +139,70 @@ public class TradeService {
     }
 
     @Transactional
-    // 리팩토링 어떻게 구성할지 생각해보기!!
     private void matchSinglePair(MatchingPair pair) {
         try {
-            // 체결 수량 그리고 가격 정보
-            Quantity executableQuantity = pair.getExecutableQuantity();
-            // 리팩토링 고민해보기
-            Money executablePrice = new Money(pair.getSellDTO().getRequestedPrice());
+            // 1. 체결 대상 정보 조회 및 검증 -> (수정 해보기) Idempotency check 하는 기능 반영하기
+            MatchingContext context = loadAndValidateEntities(pair);
 
-            // 2. 실제 DB 엔티티 조회
-            StockOrder buyOrder = loadStockOrder(pair.getBuyDTO());
-            StockOrder sellOrder = loadStockOrder(pair.getSellDTO());
-            Portfolio buyOrderPortfolio = buyOrder.getPortfolio();
-            Portfolio sellOrderPortfolio = sellOrder.getPortfolio();
-            Stock stock = buyOrder.getStock();
+            // 2. 포트폴리오 및 현금 처리
+            processPortfolioUpdates(context);
 
-            log.info("[Match] Trying to match buy/sell orders... before handling");
+            // 3. 주문 수량 갱신 (Order도 반영 완료)
+            updateOrderStates(context);
 
-            // 3. 포트폴리오 동기화
-            handleBuyerPortfolioAndCash(buyOrderPortfolio, stock, executableQuantity, executablePrice);
-            handleSellerPortfolioAndCash(sellOrderPortfolio, stock, executableQuantity, executablePrice);
+            // 4. 체결 이력 저장 -> (수정 해보기) Trade 관련 UNIQUE 제약 걸어서 문제 방지할 수는 없는지?
+            saveTrade(context);
 
-            log.info("[Match] Trying to match buy/sell orders... before updating");
-
-            // 4. 주문 상태 업데이트
-            buyOrder.updateQuantity(executableQuantity, executablePrice);
-            sellOrder.updateQuantity(executableQuantity, executablePrice);
-
-            // 5. 체결 로그 생성
-            Trade trade = Trade.createTrade(buyOrder, sellOrder, stock, executablePrice, executableQuantity,
-                    LocalDateTime.now());
-            tradeRepository.save(trade);
-
-            // 6. Redis 동기화
-            syncRedisAfterExecution(pair, executableQuantity);
+            // 5. Redis 동기화 -> (수정 해보기) Redis 상태 변경을 DB 커밋 후 실행하도록 분리
+            syncRedisAfterExecution(pair, context.getExecutableQuantity());
 
         } catch (EntityNotFoundException | IllegalStateException e) {
             throw new NonRetryableMatchException(e.getMessage()); // 구조적 문제
         } catch (RedisConnectionException | DataAccessException e) {
             throw new RetryableMatchException(e.getMessage()); // 일시적 장애
         }
+    }
+
+    private MatchingContext loadAndValidateEntities(MatchingPair pair) {
+        Quantity quantity = pair.getExecutableQuantity();
+        Money price = new Money(pair.getSellDTO().getRequestedPrice());
+
+        StockOrder buyOrder = loadStockOrder(pair.getBuyDTO());
+        StockOrder sellOrder = loadStockOrder(pair.getSellDTO());
+
+        Portfolio buyPortfolio = buyOrder.getPortfolio();
+        Portfolio sellPortfolio = sellOrder.getPortfolio();
+        Stock stock = buyOrder.getStock();
+
+        return new MatchingContext(buyOrder, sellOrder, buyPortfolio, sellPortfolio, stock, quantity, price);
+    }
+
+    private void processPortfolioUpdates(MatchingContext ctx) {
+        handleBuyerPortfolioAndCash(ctx.getBuyPortfolio(), ctx.getStock(), ctx.getExecutableQuantity(), ctx.getExecutablePrice());
+        handleSellerPortfolioAndCash(ctx.getSellPortfolio(), ctx.getStock(), ctx.getExecutableQuantity(), ctx.getExecutablePrice());
+    }
+
+    private void updateOrderStates(MatchingContext ctx) {
+        StockOrder buyOrder = ctx.getBuyOrder();
+        StockOrder sellOrder = ctx.getSellOrder();
+
+        buyOrder.updateQuantity(ctx.getExecutableQuantity(), ctx.getExecutablePrice());
+        sellOrder.updateQuantity(ctx.getExecutableQuantity(), ctx.getExecutablePrice());
+
+        // ✅ 상위 Order 상태도 업데이트
+        buyOrder.getOrder().aggregateStatusFromChildren();
+        sellOrder.getOrder().aggregateStatusFromChildren();
+    }
+
+    private void saveTrade(MatchingContext ctx) {
+        Trade trade = Trade.createTrade(
+                ctx.getBuyOrder(),
+                ctx.getSellOrder(),
+                ctx.getStock(),
+                ctx.getExecutablePrice(),
+                ctx.getExecutableQuantity(),
+                LocalDateTime.now());
+        tradeRepository.save(trade);
     }
 
     private void syncRedisAfterExecution(MatchingPair pair, Quantity executableQuantity) {
@@ -196,6 +221,8 @@ public class TradeService {
         }
 
     }
+
+
 
     private MatchingPair afterExecution(MatchingPair pair, Quantity executableQuantity) {
         return pair.afterExecution(executableQuantity);

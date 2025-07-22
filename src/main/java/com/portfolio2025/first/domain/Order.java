@@ -4,6 +4,7 @@ package com.portfolio2025.first.domain;
 import com.portfolio2025.first.domain.order.OrderStatus;
 import com.portfolio2025.first.domain.order.OrderType;
 import com.portfolio2025.first.domain.stock.StockOrder;
+import com.portfolio2025.first.domain.stock.StockOrderStatus;
 import com.portfolio2025.first.domain.vo.Money;
 import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.CascadeType;
@@ -141,8 +142,6 @@ public class Order {
         return order;
     }
 
-
-
     /** 상태 변경 시 시간 갱신 */
     public void updateStatus(OrderStatus newStatus) {
         this.orderStatus = newStatus;
@@ -152,5 +151,49 @@ public class Order {
     public void updateExecutedTime(LocalDateTime executedTime) {
         this.updatedAt = executedTime;
     }
+
+    // 하드 코딩 식으로 작성했는데도 괜찮은지?
+    public void aggregateStatusFromChildren() {
+        if (stockOrders.isEmpty()) return;
+
+        boolean allPending = true;
+        boolean allFilled = true;
+        boolean allCancelled = true;
+
+        for (StockOrder so : stockOrders) {
+            StockOrderStatus status = so.getStockOrderStatus();
+
+            if (status != StockOrderStatus.PENDING) {
+                allPending = false;
+            }
+            if (status != StockOrderStatus.FILLED) {
+                allFilled = false;
+            }
+            if (status != StockOrderStatus.CANCELLED) {
+                allCancelled = false;
+            }
+        }
+
+        if (allFilled || (hasFilled() && hasCancelled())) {
+            updateStatus(OrderStatus.COMPLETED);
+        } else if (allCancelled) {
+            updateStatus(OrderStatus.CANCELED);
+        } else if (allPending) {
+            updateStatus(OrderStatus.CREATED);
+        } else {
+            updateStatus(OrderStatus.PROCESSING);
+        }
+    }
+
+    private boolean hasFilled() {
+        return stockOrders.stream()
+                .anyMatch(so -> so.getStockOrderStatus() == StockOrderStatus.FILLED);
+    }
+
+    private boolean hasCancelled() {
+        return stockOrders.stream()
+                .anyMatch(so -> so.getStockOrderStatus() == StockOrderStatus.CANCELLED);
+    }
+
 }
 

@@ -10,4 +10,13 @@ public class TradeRepositoryImpl extends BaseRepositoryImpl<Trade, Long> impleme
         super(em, Trade.class);
     }
 
+    @Override
+    public boolean existsByBuyOrderAndSellOrder(Long buyOrderId, Long sellOrderId) {
+        String jpql = "SELECT COUNT(t) FROM Trade t WHERE t.buyOrder.id = :buyOrderId AND t.sellOrder.id = :sellOrderId";
+        Long count = em.createQuery(jpql, Long.class)
+                .setParameter("buyOrderId", buyOrderId)
+                .setParameter("sellOrderId", sellOrderId)
+                .getSingleResult();
+        return count > 0;
+    }
 }

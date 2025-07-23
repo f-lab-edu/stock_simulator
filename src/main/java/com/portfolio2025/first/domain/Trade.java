@@ -15,14 +15,25 @@ import jakarta.persistence.Id;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import java.time.LocalDateTime;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/**
+ * 중복 저장을 방지하기 위해서(데이터 정합성)을 위해서 DB 차원의 추가적인 제약 조건을 활용
+ *
+ */
+
+
 @Entity
 @Getter
 @NoArgsConstructor
+@Table( uniqueConstraints = {
+        @UniqueConstraint(name = "uk_buy_sell_order", columnNames = {"buy_order_id", "sell_order_id"})
+})
 public class Trade {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

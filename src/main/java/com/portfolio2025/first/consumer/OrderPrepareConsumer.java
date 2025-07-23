@@ -92,7 +92,6 @@ public class OrderPrepareConsumer {
             log.error("❌ Error while processing stockOrders: {}", e.getMessage());
             // 재발행하는 경우 Idempotency는 어떻게 구성할지 생각할 수 있어야 함.
         } finally {
-
             // ✅ 모든 처리 완료 후 커밋
             ack.acknowledge();
             log.info("✅ Kafka offset manually committed");

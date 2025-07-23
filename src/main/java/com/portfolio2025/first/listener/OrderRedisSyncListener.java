@@ -1,19 +1,25 @@
-package com.portfolio2025.first;
+package com.portfolio2025.first.listener;
 
 
 import com.portfolio2025.first.dto.event.OrderCreatedEvent;
 import com.portfolio2025.first.service.KafkaProducerService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
+/**
+ * 매수 혹은 매도 주문 생성 이후 REDIS에 반영 위한 event 발행
+ * 후속 처리 가능함
+ * Transaction commit 이후 동기적으로 이벤트 발행 처리하기 - AFTER_COMMIT
+ */
+
+
 @Component
 @RequiredArgsConstructor
 @Slf4j
-public class KafkaOrderEventListener {
+public class OrderRedisSyncListener {
 
     private final KafkaProducerService kafkaProducerService;
 

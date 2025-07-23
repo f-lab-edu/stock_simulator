@@ -12,6 +12,7 @@ import com.portfolio2025.first.domain.stock.StockOrder;
 import com.portfolio2025.first.domain.vo.Money;
 import com.portfolio2025.first.domain.vo.Quantity;
 import com.portfolio2025.first.dto.StockOrderRedisDTO;
+import com.portfolio2025.first.dto.event.TradeSavedEvent;
 import com.portfolio2025.first.exception.NonRetryableMatchException;
 import com.portfolio2025.first.exception.RetryableMatchException;
 import com.portfolio2025.first.repository.OrderRepository;
@@ -30,6 +31,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.redisson.client.RedisConnectionException;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,8 +43,9 @@ import org.springframework.transaction.annotation.Transactional;
  * 1. 분산 락 고려할 수 있어야 함(다중 서버 환경에서 Race condition 발생할 수 있음. 동시에 같은 종목 체결 로직을 실행하는 경우)
  * (RedissonClient 활용해서 Lock 획득 - Transaction 진행 - Transaction 올바르게 성공해야 Redis 데이터 반영하기)
  * 2. Redis에 다시 push 해야 하는 상황을 더 고려해보기
- * 3. 다시 push 혹은 실패한 요청 재시도 하는 상황에 대해서 어떻게 처리할지 - idempotency 고려할 수 있어야 함
- * 4. 무한루프이기 때문에 retry 관련 제한을 반영할 수 있어야 한다
+ * 3. 다시 push 혹은 실패한 요청 재시도 하는 상황에 대해서 어떻게 처리할지 - idempotency 고려할 수 있어야 함 (완)
+ * 4. 무한루프이기 때문에 retry 관련 제한을 반영할 수 있어야 한다 (완) - Controller 기반에서 하는건지 아니면 Service 내에서 진행하면 되는건지??
+ * 5. Redis 반영 역시 이벤트 발행으로 - TransactionalListenerEvent(phase = AFTER_COMMIT) 방식 활용 예정
  */
 
 @Service
@@ -59,6 +62,7 @@ public class TradeService {
     private final TradeRepository tradeRepository; // 체결 이력을 담당하는 테이블
 
     private final RedisStockOrderService redisStockOrderService;
+    private final ApplicationEventPublisher eventPublisher;
 
     // Redisson 분산 락 적용하기
     private final RedissonClient redissonClient;
@@ -141,7 +145,7 @@ public class TradeService {
     @Transactional
     private void matchSinglePair(MatchingPair pair) {
         try {
-            // 1. 체결 대상 정보 조회 및 검증 -> (수정 해보기) Idempotency check 하는 기능 반영하기
+            // 1. 체결 대상 정보 조회 및 검증 -> Idempotency check -> saveTrade() 하는 과정에서 이뤄짐
             MatchingContext context = loadAndValidateEntities(pair);
 
             // 2. 포트폴리오 및 현금 처리
@@ -150,11 +154,11 @@ public class TradeService {
             // 3. 주문 수량 갱신 (Order도 반영 완료)
             updateOrderStates(context);
 
-            // 4. 체결 이력 저장 -> (수정 해보기) Trade 관련 UNIQUE 제약 걸어서 문제 방지할 수는 없는지?
-            saveTrade(context);
+            // 4. 체결 이력 저장 -> Trade 관련 UNIQUE 제약 반영 완료 + 이벤트 발행까지
+            saveTradeAndPublishEvent(context, pair);
 
-            // 5. Redis 동기화 -> (수정 해보기) Redis 상태 변경을 DB 커밋 후 실행하도록 분리
-            syncRedisAfterExecution(pair, context.getExecutableQuantity());
+            // 5. Redis 동기화 -> (수정 해보기) Redis 상태 변경을 DB 커밋 후 실행하도록 분리 - TradeRedisSyncListener
+//            syncRedisAfterExecution(pair, context.getExecutableQuantity());
 
         } catch (EntityNotFoundException | IllegalStateException e) {
             throw new NonRetryableMatchException(e.getMessage()); // 구조적 문제
@@ -194,7 +198,16 @@ public class TradeService {
         sellOrder.getOrder().aggregateStatusFromChildren();
     }
 
-    private void saveTrade(MatchingContext ctx) {
+    private void saveTradeAndPublishEvent(MatchingContext ctx, MatchingPair pair) {
+        Long buyOrderId = ctx.getBuyOrder().getId();
+        Long sellOrderId = ctx.getSellOrder().getId();
+
+        // 멱등성 체크
+        if (tradeRepository.existsByBuyOrderAndSellOrder(buyOrderId, sellOrderId)) {
+            log.warn("[Trade] 이미 체결된 거래입니다. 저장을 생략합니다. buyOrderId={}, sellOrderId={}", buyOrderId, sellOrderId);
+            return;
+        }
+
         Trade trade = Trade.createTrade(
                 ctx.getBuyOrder(),
                 ctx.getSellOrder(),
@@ -203,6 +216,21 @@ public class TradeService {
                 ctx.getExecutableQuantity(),
                 LocalDateTime.now());
         tradeRepository.save(trade);
+
+        // 🎯 이벤트 발행 분리
+        publishTradeSavedEvent(trade.getId(), pair, ctx.getExecutableQuantity());
+    }
+
+    private void publishTradeSavedEvent(Long tradeId, MatchingPair pair, Quantity executedQuantity) {
+        MatchingPair updatedPair = afterExecution(pair, executedQuantity);
+
+        TradeSavedEvent event = new TradeSavedEvent(
+                tradeId,
+                updatedPair.getBuyDTO(),
+                updatedPair.getSellDTO()
+        );
+
+        eventPublisher.publishEvent(event);
     }
 
     private void syncRedisAfterExecution(MatchingPair pair, Quantity executableQuantity) {

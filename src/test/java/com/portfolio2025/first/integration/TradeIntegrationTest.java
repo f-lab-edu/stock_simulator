@@ -3,7 +3,7 @@ package com.portfolio2025.first.integration;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.portfolio2025.first.consumer.OrderPrepareConsumer;
+import com.portfolio2025.first.consumer.OrderRequestConsumer;
 import com.portfolio2025.first.domain.Account;
 import com.portfolio2025.first.domain.Portfolio;
 import com.portfolio2025.first.domain.PortfolioStock;
@@ -59,7 +59,7 @@ public class TradeIntegrationTest {
     @Autowired private PortfolioRepository portfolioRepository;
     @Autowired private PortfolioStockRepository portfolioStockRepository;
     @Autowired private TradeRepository tradeRepository;
-    @Autowired private OrderPrepareConsumer orderPrepareConsumer;
+    @Autowired private OrderRequestConsumer orderRequestConsumer;
     @Autowired private KafkaTemplate<String, String> kafkaTemplate;
 
     private User userA;

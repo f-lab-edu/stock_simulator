@@ -25,7 +25,7 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 @Slf4j
-public class OrderPrepareConsumer {
+public class OrderRequestConsumer {
 
     private final OrderRepository orderRepository;
     private final OrderPrepareService orderPrepareService;
@@ -36,7 +36,6 @@ public class OrderPrepareConsumer {
     @KafkaListener(
             topics = "order.created",
             groupId = "order-prepare-group",
-            concurrency ="2",
             containerFactory = "stringKafkaListenerContainerFactory"
     )
     public void consumeOrderCreated(String message, Acknowledgment ack) throws InterruptedException {

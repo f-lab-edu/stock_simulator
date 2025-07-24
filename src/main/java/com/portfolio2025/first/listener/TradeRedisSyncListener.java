@@ -2,6 +2,7 @@ package com.portfolio2025.first.listener;
 
 import com.portfolio2025.first.dto.StockOrderRedisDTO;
 import com.portfolio2025.first.dto.event.TradeSavedEvent;
+import com.portfolio2025.first.service.KafkaProducerService;
 import com.portfolio2025.first.service.RedisStockOrderService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,23 +21,13 @@ import org.springframework.transaction.event.TransactionalEventListener;
 @Slf4j
 public class TradeRedisSyncListener {
 
-    private final RedisStockOrderService redisStockOrderService;
+    private final KafkaProducerService kafkaProducerService;
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleTradeSavedEvent(TradeSavedEvent event) {
         log.info("[RedisSync] TradeSavedEvent 수신 - tradeId: {}", event.getTradeId());
 
-        StockOrderRedisDTO buyDTO = event.getBuyDTO();
-        StockOrderRedisDTO sellDTO = event.getSellDTO();
-
-        if (buyDTO != null && buyDTO.hasQuantity()) {
-            redisStockOrderService.pushBuyOrderDTO(buyDTO);
-            log.info("[RedisSync] BuyOrder 재삽입 - {}", buyDTO);
-        }
-
-        if (sellDTO != null && sellDTO.hasQuantity()) {
-            redisStockOrderService.pushSellOrderDTO(sellDTO);
-            log.info("[RedisSync] SellOrder 재삽입 - {}", sellDTO);
-        }
+        // ✅ Kafka로 그대로 이벤트 발행
+        kafkaProducerService.publishTradeSyncRequest(event);
     }
 }

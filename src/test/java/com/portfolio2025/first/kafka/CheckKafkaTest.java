@@ -1,6 +1,6 @@
 package com.portfolio2025.first.kafka;
 
-import com.portfolio2025.first.consumer.OrderPrepareConsumer;
+import com.portfolio2025.first.consumer.OrderRequestConsumer;
 import com.portfolio2025.first.domain.Account;
 import com.portfolio2025.first.domain.Portfolio;
 import com.portfolio2025.first.domain.PortfolioType;
@@ -59,7 +59,7 @@ public class CheckKafkaTest {
     @Autowired private PortfolioRepository portfolioRepository;
     @Autowired private PortfolioStockRepository portfolioStockRepository;
     @Autowired private TradeRepository tradeRepository;
-    @Autowired private OrderPrepareConsumer orderPrepareConsumer;
+    @Autowired private OrderRequestConsumer orderRequestConsumer;
 
     @Autowired private KafkaTemplate<String, String> kafkaTemplate;
     @Autowired private StringRedisTemplate redisTemplate;

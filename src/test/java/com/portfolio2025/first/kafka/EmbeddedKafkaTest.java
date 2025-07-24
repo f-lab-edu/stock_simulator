@@ -1,6 +1,6 @@
 package com.portfolio2025.first.kafka;
 
-import com.portfolio2025.first.consumer.OrderPrepareConsumer;
+import com.portfolio2025.first.consumer.OrderRequestConsumer;
 import com.portfolio2025.first.domain.Account;
 import com.portfolio2025.first.domain.Portfolio;
 import com.portfolio2025.first.domain.PortfolioStock;
@@ -47,7 +47,7 @@ import org.springframework.test.context.ActiveProfiles;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class EmbeddedKafkaTest {
 
-    @Autowired private OrderPrepareConsumer orderPrepareConsumer;
+    @Autowired private OrderRequestConsumer orderRequestConsumer;
     @Autowired private StringRedisTemplate redisTemplate;
 
 

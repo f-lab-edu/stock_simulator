@@ -1,10 +1,13 @@
 package com.portfolio2025.first.kafka;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import com.portfolio2025.first.consumer.OrderRequestConsumer;
 import com.portfolio2025.first.domain.Account;
 import com.portfolio2025.first.domain.Portfolio;
 import com.portfolio2025.first.domain.PortfolioStock;
 import com.portfolio2025.first.domain.PortfolioType;
+import com.portfolio2025.first.domain.Trade;
 import com.portfolio2025.first.domain.User;
 import com.portfolio2025.first.domain.stock.Stock;
 import com.portfolio2025.first.domain.vo.Money;
@@ -23,6 +26,8 @@ import com.portfolio2025.first.service.SellOrderProcessor;
 import com.portfolio2025.first.service.StockOrderService;
 import jakarta.transaction.Transactional;
 import java.time.LocalDateTime;
+import java.util.List;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
@@ -74,8 +79,7 @@ public class EmbeddedKafkaTest {
     private Portfolio buyPortfolio;
     private Portfolio sellPortfolio;
 
-    @BeforeEach
-    void setUp() {
+    void init() {
         /** userA - 매수자 **/
         userA = userRepository.save(User.createUser("sunghun", "suwon",
                 "010-1234-5678", "test@email.com", "pw"));
@@ -137,13 +141,12 @@ public class EmbeddedKafkaTest {
                 sellPortfolio, samsung, new Quantity(2L), new Money(90_000L)
         ));
         portfolioRepository.flush();
-
     }
 
 
     @Test
-    @Commit
     void testKafkaOrderCreatedEventConsumption() throws Exception {
+        init();
         // Kafka 이벤트가 정상적으로 발행되는지 확인 -> 정상적으로 소비되는지 확인하기
         StockOrderRequestDTO buyTestDTO = new StockOrderRequestDTO(
                 samsung.getStockCode(),
@@ -164,10 +167,11 @@ public class EmbeddedKafkaTest {
         // 3. 매도자 B가 삼성전자 2주 매도 (100만원  /주)
         stockOrderService.placeSingleOrder(sellTestDTO, sellOrderProcessor);
 
+        Thread.sleep(10000);
 
         // 체결 검증은 아래와 같음
-//        List<Trade> trades = tradeRepository.findAll();
-//        assertEquals(1, trades.size());
+        List<Trade> trades = tradeRepository.findAll();
+        assertEquals(1, trades.size());
 //
 //        Trade trade = trades.get(0);
 //        assertEquals(1000_000L, trade.getTradePrice().getMoneyValue());

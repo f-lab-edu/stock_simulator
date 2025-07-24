@@ -38,6 +38,15 @@ public class KafkaProducerConfig {
                 .build();
     }
 
+    // 체결 Sync
+    @Bean
+    public NewTopic tradeSyncedTopic() {
+        return TopicBuilder.name("trade.synced")
+                .partitions(2)
+                .replicas(1)
+                .build();
+    }
+
     // 1. OrderCreatedEvent용 KafkaTemplate (Json 직렬화)
     @Bean
     public ProducerFactory<String, OrderCreatedEvent> orderProducerFactory() {

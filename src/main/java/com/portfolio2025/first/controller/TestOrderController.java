@@ -39,7 +39,7 @@ public class TestOrderController {
     private final PortfolioRepository portfolioRepository;
     private final PortfolioStockRepository portfolioStockRepository;
     private final StockRepository stockRepository;
-    private final RedisTemplate<String, Object> redisTemplate;
+    private final RedisTemplate<String, String> redisTemplate;
 
     private User userA;
     private User userB;
@@ -79,13 +79,15 @@ public class TestOrderController {
                 .availableQuantity(new Quantity(1_000_000L))
                 .build());
 
-        // Redis 초기화
-        redisTemplate.getConnectionFactory().getConnection().flushAll();
-
         // 매도자 B가 2주 보유
         portfolioStockRepository.save(PortfolioStock.createPortfolioStock(
                 sellPortfolio, samsung, new Quantity(2L), new Money(90_000L)
         ));
+
+        // Redis 초기화
+        redisTemplate.getConnectionFactory().getConnection().flushAll();
+
+
 
         initialized = true;
     }

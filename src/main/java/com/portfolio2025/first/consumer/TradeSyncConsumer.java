@@ -6,6 +6,7 @@ import com.portfolio2025.first.service.RedisStockOrderService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -20,7 +21,7 @@ public class TradeSyncConsumer {
             groupId = "redis-sync",
             containerFactory = "stringKafkaListenerContainerFactory"
     )
-    public void consumeTradeSynced(String message) {
+    public void consumeTradeSynced(String message, Acknowledgment ack) {
         try {
             TradeSavedEvent event = objectMapper.readValue(message, TradeSavedEvent.class);
 
@@ -38,6 +39,9 @@ public class TradeSyncConsumer {
         } catch (Exception e) {
             log.error("[Kafka] trade.synced 처리 실패: {}", e.getMessage(), e);
             // 필요시 DLQ로 전송
+        } finally {
+            ack.acknowledge();
+            log.info("✅ Kafka offset manually committed");
         }
     }
 }

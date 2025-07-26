@@ -1,0 +1,33 @@
+# application-test.yml
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/testdb  # ← 운영과 분리된 DB
+    username: root
+    password:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: create
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+    database-platform: org.hibernate.dialect.MySQLDialect
+
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+    listener:
+      ack-mode: manual # record - 메세지당 자동 커밋, manual - 수동 커밋 설정
+
+logging:
+  level:
+    org.apache.kafka.clients.producer.ProducerConfig: WARN
+    org.springframework.kafka: DEBUG
+    #    org.apache.kafka: DEBUG
+
+server:
+  port: 8080

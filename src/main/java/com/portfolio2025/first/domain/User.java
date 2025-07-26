@@ -1,13 +1,19 @@
 package com.portfolio2025.first.domain;
 
+import com.portfolio2025.first.domain.vo.Money;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -18,13 +24,13 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED) // JPA 기본 생성자
 public class User {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(nullable = false, length = 50)
     private String name;
+
     @Column(name = "user_id", nullable = false, length = 30)
     private String userId;
 
@@ -33,16 +39,18 @@ public class User {
     private String phoneNumber;
     private String email;
 
-    @Embedded
-    private Money balance;
-
     @Column(name = "created_at")
     private LocalDateTime createdAt;
+
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    // 양방향으로 처리하기
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Portfolio> portfolios = new ArrayList<>();
+
     @Builder
-    public User(String name, String location, String phoneNumber, String email, String userId) {
+    private User(String name, String location, String phoneNumber, String email, String userId) {
         if (name == null || userId == null) {
             throw new IllegalArgumentException("이름과 아이디는 필수입니다.");
         }
@@ -52,11 +60,20 @@ public class User {
         this.phoneNumber = phoneNumber;
         this.email = email;
         this.userId = userId;
-        this.balance = new Money(0L);
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
     }
 
+    // save하는건 어떻게?
+    public static User createUser(String name, String location, String phoneNumber, String email, String userId) {
+        return User.builder()
+                .name(name)
+                .location(location)
+                .phoneNumber(phoneNumber)
+                .email(email)
+                .userId(userId)
+                .build();
+    }
 
     public void updateContact(String phoneNumber, String email) {
         this.phoneNumber = phoneNumber;
@@ -69,22 +86,13 @@ public class User {
         this.updatedAt = LocalDateTime.now();
     }
 
-    public void chargeBalance(Money money) {
-        this.balance = this.balance.plus(money);
-        this.updatedAt = LocalDateTime.now();
+    /** 양방향 편의 메서드 **/
+    public void addPortfolio(Portfolio portfolio) {
+        portfolios.add(portfolio);
     }
 
-    public void deductBalance(Money money) {
-        this.balance = this.balance.minus(money);
-        this.updatedAt = LocalDateTime.now();
-    }
-
-    public void deposit(Money money) {
-        this.balance = balance.plus(money);
-    }
-
-    public void withdraw(Money money) {
-        this.balance = balance.minus(money);
+    public Optional<Portfolio> getDefaultPortfolio() {
+        return portfolios.stream().filter(p -> p.getPortfolioType() == PortfolioType.STOCK).findFirst();
     }
 }
 

@@ -4,8 +4,13 @@ package com.portfolio2025.first.domain;
 import com.portfolio2025.first.domain.order.OrderStatus;
 import com.portfolio2025.first.domain.order.OrderType;
 import com.portfolio2025.first.domain.stock.StockOrder;
+import com.portfolio2025.first.domain.stock.StockOrderStatus;
+import com.portfolio2025.first.domain.vo.Money;
+import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
+import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -20,9 +25,16 @@ import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import javax.sound.sampled.Port;
+import lombok.AccessLevel;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "orders")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Order {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -32,29 +44,156 @@ public class Order {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Column(name = "order_date", nullable = false)
-    private LocalDateTime orderDate;
-
     @Enumerated(EnumType.STRING)
     @Column(name = "order_status", nullable = false)
-    private OrderStatus orderStatus;
-
-    @Column(name = "executed_quantity")
-    private Long executedQuantity;
-
-    @Column(name = "stock_name", nullable = false)
-    private String stockName;
-
-    @Column(name = "deleted", nullable = false)
-    private Boolean deleted;
+    private OrderStatus orderStatus; // CREATED(생성 완료) - PROCESSING(진행중 + 부분체결) - COMPLETED(완료) - CANCELLED(삭제완료)
 
     @Enumerated(EnumType.STRING)
     @Column(name = "order_type", nullable = false)
-    private OrderType orderType;
+    private OrderType orderType;  // BUY / SELL 등
 
-    // ✅ Order ↔ StockOrder 연결
-    // cascade?? orphanRemoval???
+    @Embedded
+    @Column(name = "total_price", nullable = false)
+    @AttributeOverride(name = "moneyValue", column = @Column(name = "total_price"))
+    private Money totalPrice;  // 하위 StockOrder 총 주문 금액
+
+    @Column(name = "deleted", nullable = false)
+    private Boolean deleted; // 삭제 여부
+
+    @Column(name = "created_at", nullable = false) // nullable 설정했다면 - primitive 사용 가능함
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
+
+    // 양방향 연관관계
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<StockOrder> stockOrders = new ArrayList<>();
+
+
+    @Builder
+    private Order(User user, OrderType orderType, Money totalPrice, LocalDateTime createdAt, LocalDateTime updatedAt) {
+        this.user = user;
+        this.orderStatus = OrderStatus.CREATED;
+        this.orderType = orderType;
+        this.totalPrice = totalPrice;
+        this.deleted = false;
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public static Order createSingleBuyOrder(Portfolio portfolio, StockOrder stockOrder, OrderType orderType,
+                                             Money totalPrice) {
+        Order createdOrder = Order.builder()
+                .user(portfolio.getUser())
+                .orderType(orderType) // 매도, 매수
+                .totalPrice(totalPrice)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+
+        // 양방향 설정하기
+        addStockOrder(stockOrder, createdOrder);
+
+        return createdOrder;
+    }
+
+    /** 양방향 연관관계 편의 메서드 **/
+    private static void addStockOrder(StockOrder stockOrder, Order createdOrder) {
+        createdOrder.getStockOrders().add(stockOrder);
+        stockOrder.setOrder(createdOrder);
+    }
+
+    /** 복수 주문 매수 메서드 **/
+    public static Order createBulkBuyOrder(User user, List<StockOrder> stockOrders, OrderType orderType, Money totalPrice) {
+
+        Order createdBulkOrder = Order.builder()
+                .user(user)
+                .orderType(orderType)
+                .totalPrice(totalPrice)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+
+        // 양방향 매핑 관계 설정
+        for (StockOrder stockOrder : stockOrders) {
+            addStockOrder(stockOrder, createdBulkOrder);
+        }
+
+        return createdBulkOrder;
+    }
+
+    public static Order createBulkBuyOrder(Portfolio portfolio, List<StockOrder> stockOrders, OrderType orderType, Money totalPrice) {
+
+        Order order = Order.builder()
+                .user(portfolio.getUser()) // 간접 연관
+                .orderType(orderType)
+                .totalPrice(totalPrice)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+
+        // 양방향 매핑 관계 설정
+        stockOrders.forEach(so -> {
+            so.setOrder(order);
+            order.getStockOrders().add(so);
+        });
+
+        return order;
+    }
+
+    /** 상태 변경 시 시간 갱신 */
+    public void updateStatus(OrderStatus newStatus) {
+        this.orderStatus = newStatus;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void updateExecutedTime(LocalDateTime executedTime) {
+        this.updatedAt = executedTime;
+    }
+
+    // 하드 코딩 식으로 작성했는데도 괜찮은지?
+    public void aggregateStatusFromChildren() {
+        if (stockOrders.isEmpty()) return;
+
+        boolean allPending = true;
+        boolean allFilled = true;
+        boolean allCancelled = true;
+
+        for (StockOrder so : stockOrders) {
+            StockOrderStatus status = so.getStockOrderStatus();
+
+            if (status != StockOrderStatus.PENDING) {
+                allPending = false;
+            }
+            if (status != StockOrderStatus.FILLED) {
+                allFilled = false;
+            }
+            if (status != StockOrderStatus.CANCELLED) {
+                allCancelled = false;
+            }
+        }
+
+        if (allFilled || (hasFilled() && hasCancelled())) {
+            updateStatus(OrderStatus.COMPLETED);
+        } else if (allCancelled) {
+            updateStatus(OrderStatus.CANCELED);
+        } else if (allPending) {
+            updateStatus(OrderStatus.CREATED);
+        } else {
+            updateStatus(OrderStatus.PROCESSING);
+        }
+    }
+
+    private boolean hasFilled() {
+        return stockOrders.stream()
+                .anyMatch(so -> so.getStockOrderStatus() == StockOrderStatus.FILLED);
+    }
+
+    private boolean hasCancelled() {
+        return stockOrders.stream()
+                .anyMatch(so -> so.getStockOrderStatus() == StockOrderStatus.CANCELLED);
+    }
+
 }
 

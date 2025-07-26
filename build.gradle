@@ -27,9 +27,17 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
 	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'redis.clients:jedis:4.4.0'
+	implementation 'com.fasterxml.jackson.core:jackson-databind:2.19.0'
+	implementation 'org.springframework.kafka:spring-kafka'
+	implementation 'org.redisson:redisson-spring-boot-starter:3.23.5' // 버전은 최신 확인
+	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+
 	compileOnly 'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testImplementation 'org.springframework.kafka:spring-kafka-test'
+	testImplementation 'org.awaitility:awaitility:4.2.0'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 	runtimeOnly 'com.mysql:mysql-connector-j'
 }

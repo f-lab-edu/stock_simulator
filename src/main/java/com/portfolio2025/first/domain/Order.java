@@ -9,7 +9,6 @@ import com.portfolio2025.first.domain.vo.Money;
 import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
-import jakarta.persistence.Embeddable;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -25,17 +24,25 @@ import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import javax.sound.sampled.Port;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/**
+ * 매수 Or 매도 주문 StockOrder의 상위 정보를 관리하는 Order
+ * [07.26]
+ * (수정)
+ *
+ * [고민]
+ * 1. CREATED, PROCESSING 상태를 명확하게 구분할 수 있어야 함
+ */
 @Entity
 @Table(name = "orders")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Order {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -53,7 +60,6 @@ public class Order {
     private OrderType orderType;  // BUY / SELL 등
 
     @Embedded
-    @Column(name = "total_price", nullable = false)
     @AttributeOverride(name = "moneyValue", column = @Column(name = "total_price"))
     private Money totalPrice;  // 하위 StockOrder 총 주문 금액
 
@@ -72,7 +78,7 @@ public class Order {
 
 
     @Builder
-    private Order(User user, OrderType orderType, Money totalPrice, LocalDateTime createdAt, LocalDateTime updatedAt) {
+    private Order(User user, OrderType orderType, Money totalPrice) {
         this.user = user;
         this.orderStatus = OrderStatus.CREATED;
         this.orderType = orderType;
@@ -88,13 +94,10 @@ public class Order {
                 .user(portfolio.getUser())
                 .orderType(orderType) // 매도, 매수
                 .totalPrice(totalPrice)
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
                 .build();
 
         // 양방향 설정하기
         addStockOrder(stockOrder, createdOrder);
-
         return createdOrder;
     }
 
@@ -102,44 +105,6 @@ public class Order {
     private static void addStockOrder(StockOrder stockOrder, Order createdOrder) {
         createdOrder.getStockOrders().add(stockOrder);
         stockOrder.setOrder(createdOrder);
-    }
-
-    /** 복수 주문 매수 메서드 **/
-    public static Order createBulkBuyOrder(User user, List<StockOrder> stockOrders, OrderType orderType, Money totalPrice) {
-
-        Order createdBulkOrder = Order.builder()
-                .user(user)
-                .orderType(orderType)
-                .totalPrice(totalPrice)
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
-                .build();
-
-        // 양방향 매핑 관계 설정
-        for (StockOrder stockOrder : stockOrders) {
-            addStockOrder(stockOrder, createdBulkOrder);
-        }
-
-        return createdBulkOrder;
-    }
-
-    public static Order createBulkBuyOrder(Portfolio portfolio, List<StockOrder> stockOrders, OrderType orderType, Money totalPrice) {
-
-        Order order = Order.builder()
-                .user(portfolio.getUser()) // 간접 연관
-                .orderType(orderType)
-                .totalPrice(totalPrice)
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
-                .build();
-
-        // 양방향 매핑 관계 설정
-        stockOrders.forEach(so -> {
-            so.setOrder(order);
-            order.getStockOrders().add(so);
-        });
-
-        return order;
     }
 
     /** 상태 변경 시 시간 갱신 */
@@ -152,39 +117,24 @@ public class Order {
         this.updatedAt = executedTime;
     }
 
-    // 하드 코딩 식으로 작성했는데도 괜찮은지?
-    public void aggregateStatusFromChildren() {
+    // 고민 1. CREATED, PROCESSING 상태를 명확하게 구분할 수 있어야 함
+    public void aggregateStatusFromStockOrders() {
         if (stockOrders.isEmpty()) return;
 
-        boolean allPending = true;
-        boolean allFilled = true;
-        boolean allCancelled = true;
-
-        for (StockOrder so : stockOrders) {
-            StockOrderStatus status = so.getStockOrderStatus();
-
-            if (status != StockOrderStatus.PENDING) {
-                allPending = false;
-            }
-            if (status != StockOrderStatus.FILLED) {
-                allFilled = false;
-            }
-            if (status != StockOrderStatus.CANCELLED) {
-                allCancelled = false;
-            }
-        }
+        boolean allFilled = stockOrders.stream().allMatch(so -> so.getStockOrderStatus() == StockOrderStatus.FILLED);
+        boolean allCancelled = stockOrders.stream().allMatch(so -> so.getStockOrderStatus() == StockOrderStatus.CANCELLED);
+        boolean allPending = stockOrders.stream().allMatch(so -> so.getStockOrderStatus() == StockOrderStatus.PENDING);
 
         if (allFilled || (hasFilled() && hasCancelled())) {
             updateStatus(OrderStatus.COMPLETED);
         } else if (allCancelled) {
             updateStatus(OrderStatus.CANCELED);
-        } else if (allPending) {
-            updateStatus(OrderStatus.CREATED);
         } else {
             updateStatus(OrderStatus.PROCESSING);
         }
     }
 
+    // 부분 체결인지 확인하는 로직
     private boolean hasFilled() {
         return stockOrders.stream()
                 .anyMatch(so -> so.getStockOrderStatus() == StockOrderStatus.FILLED);

@@ -23,6 +23,14 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/**
+ * 매수 Or 매도 주문 StockOrder
+ * [07.26]
+ * (수정) updateQuantity -> 메서드 네이밍 수정 + 내부 로직 분리 (calculateWeightedAverage, updateStockOrderStatus)
+ *
+ * [고민]
+ * 1. averageExecutedPrice 구체적 기획 생각해보기
+ */
 @Entity
 @Table(name = "stock_orders")
 @Getter
@@ -33,17 +41,17 @@ public class StockOrder {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // 🔗 상위 주문 연관 (다대일)
+    // 상위 주문 연관 (다대일)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_id", nullable = false)
     private Order order;
 
-    // 🔗 종목 연관 (다대일)
+    // 종목 연관 (다대일)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "stock_id", nullable = false)
     private Stock stock;
 
-    // 🔗 포트폴리오 연관 (다대일)
+    // 포트폴리오 연관 (다대일)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "portfolio_id", nullable = false)
     private Portfolio portfolio;
@@ -68,7 +76,7 @@ public class StockOrder {
     @AttributeOverride(name = "quantityValue", column = @Column(name = "remained_quantity", nullable = false))
     private Quantity remainedQuantity;
 
-    // 평균 체결 단가 (체결 없으면 null 허용)
+    // 평균 체결 단가 (체결 없으면 null 허용) -- deprecated
     @Embedded
     @AttributeOverride(name = "moneyValue", column = @Column(name = "average_executed_price"))
     private Money averageExecutedPrice;
@@ -117,45 +125,43 @@ public class StockOrder {
         this.order = order;
     }
 
-    /** 체결 업데이트 */
-    public void updateExecution(Quantity newExecutedQuantity, Money newAveragePrice, LocalDateTime executionTime) {
-        this.executedQuantity = newExecutedQuantity;
-        this.averageExecutedPrice = newAveragePrice;
-        this.executedAt = executionTime;
-        this.updatedAt = LocalDateTime.now();
-    }
-
-    /** 상태 변경 시 */
+    // 상태 변경
     public void updateStatus(StockOrderStatus newStatus) {
         this.stockOrderStatus = newStatus;
         this.updatedAt = LocalDateTime.now();
     }
 
-    public void updateQuantity(Quantity executingQuantity, Money executingPrice) {
-        // 1. 기존 체결 수량, 체결 단가
-        long prevExecutedQty = this.executedQuantity.getQuantityValue();
-        long newExecutedQty = prevExecutedQty + executingQuantity.getQuantityValue();
+    // 체결 반영
+    public void applyExecution(Quantity executingQuantity, Money executingPrice) {
+        Quantity newExecuted = this.executedQuantity.plus(executingQuantity);
+        Money newAveragePrice = calculateWeightedAverage(executingQuantity, executingPrice);
 
-        // 2. 가중 평균 계산
-        long prevTotal = this.averageExecutedPrice != null
+        this.executedQuantity = newExecuted;
+        this.remainedQuantity = this.requestedQuantity.minus(newExecuted);
+        this.averageExecutedPrice = newAveragePrice;
+        this.updatedAt = LocalDateTime.now();
+
+        updateStockOrderStatus();
+    }
+
+    // 평균 체결 단가 계산 로직
+    private Money calculateWeightedAverage(Quantity executingQuantity, Money executingPrice) {
+        long prevExecutedQty = this.executedQuantity.getQuantityValue();
+        long prevTotal = (this.averageExecutedPrice != null)
                 ? this.averageExecutedPrice.getMoneyValue() * prevExecutedQty
                 : 0L;
 
         long newTotal = executingQuantity.getQuantityValue() * executingPrice.getMoneyValue();
-        long avgPrice = (prevTotal + newTotal) / newExecutedQty;
+        long totalQty = prevExecutedQty + executingQuantity.getQuantityValue();
 
-        // 3. 필드 갱신
-        this.executedQuantity = new Quantity(newExecutedQty);
-        this.remainedQuantity = this.requestedQuantity.minus(this.executedQuantity);
-        this.averageExecutedPrice = new Money(avgPrice);
-        this.updatedAt = LocalDateTime.now();
+        return new Money((prevTotal + newTotal) / totalQty);
+    }
 
-        // 4. 상태 갱신
-        if (this.remainedQuantity.isZero()) {
-            this.stockOrderStatus = StockOrderStatus.FILLED;
-        } else {
-            this.stockOrderStatus = StockOrderStatus.PARTIALLY_FILLED;
-        }
+    // 주문 상태 갱신 로직
+    private void updateStockOrderStatus() {
+        this.stockOrderStatus = this.remainedQuantity.isZero()
+                ? StockOrderStatus.FILLED
+                : StockOrderStatus.PARTIALLY_FILLED;
     }
 }
 

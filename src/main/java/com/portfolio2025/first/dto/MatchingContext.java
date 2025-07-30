@@ -7,6 +7,14 @@ import com.portfolio2025.first.domain.vo.Quantity;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
+/**
+ * 구체 체결 정보를 관리하는 MatchingContext
+ * [07.26]
+ * (수정)
+ *
+ * [고민]
+ *
+ */
 @RequiredArgsConstructor
 @Getter
 public class MatchingContext {

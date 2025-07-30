@@ -14,6 +14,16 @@ import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 
+/**
+ * Kafka 이벤트 발행 관련 Config KafkaProducerConfig
+ *
+ * [07.30]
+ * (추가) "invalid.order.created" 토픽 추가
+ *
+ * [고민]
+ * send().get() -> 동기 처리를 진행하고 있는 상황( 아닌 경우는 어떤게 있고 어떤 차이가 있는지 알고 있어야 함)
+ * 발행에 실패한 경우 DLQ 혹은 fallback 로직을 어떻게 구성할지도 생각해보기
+ */
 @Configuration
 public class KafkaConsumerConfig {
 

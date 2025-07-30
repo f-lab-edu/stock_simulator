@@ -3,6 +3,7 @@ package com.portfolio2025.first.domain.stock;
 import com.portfolio2025.first.domain.PortfolioStock;
 import com.portfolio2025.first.domain.vo.Money;
 import com.portfolio2025.first.domain.vo.Quantity;
+import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
@@ -21,22 +22,31 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/**
+ * 주식 종목을 관리하는 Stock
+ * [07.26]
+ * (수정) 기존 Embedded 필드에 AttributeOverride 추가
+ * (수정) reserve -> assertReservable
+ *
+ * [고민]
+ * 1. 유통 주식량은 현재 구체적인 기획이 없는 상황
+ */
 @Entity
 @Table(name = "stocks")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Stock {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // 🔗 StockCategory 연관 (다대일)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "stock_category_id")
     private StockCategory stockCategory;
 
     @Embedded
-    @Column(name = "stock_price", nullable = false)
+    @AttributeOverride(name = "moneyValue", column = @Column(name = "stock_price", nullable = false))
     private Money stockPrice;
 
     @Column(name = "stock_name", nullable = false, unique = true)
@@ -46,14 +56,12 @@ public class Stock {
     private String stockCode;
 
     @Embedded
-    @Column(name = "available_quantity", nullable = false)
-    private Quantity availableQuantity; // 유통 주식량
+    @AttributeOverride(name = "quantityValue", column = @Column(name = "available_quantity", nullable = false))
+    private Quantity availableQuantity;
 
-    // 📦 (선택) 포트폴리오 종목 연관
     @OneToMany(mappedBy = "stock")
     private List<PortfolioStock> portfolioStocks = new ArrayList<>();
 
-    // 📦 (선택) 주문 내역 연관
     @OneToMany(mappedBy = "stock")
     private List<StockOrder> stockOrders = new ArrayList<>();
 
@@ -89,8 +97,8 @@ public class Stock {
         }
     }
 
-    public void reserve(Quantity totalQuantityVO) {
-        validateSufficientQuantity(totalQuantityVO);
+    public void assertReservable(Quantity desiredQuantity) {
+        validateSufficientQuantity(desiredQuantity);
     }
 
     public void decreaseAvailableQuantity(Quantity executedQuantity) {

@@ -2,7 +2,7 @@ package com.portfolio2025.first.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.portfolio2025.first.domain.MatchingPair;
+import com.portfolio2025.first.dto.MatchingPair;
 import com.portfolio2025.first.domain.stock.StockOrder;
 import com.portfolio2025.first.dto.StockOrderRedisDTO;
 import java.time.ZoneOffset;
@@ -13,12 +13,15 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 /**
- * 매수 주문 시 가격(음수화) - 시간 (pop 진행 시 reverse)
- * 매도 주문 시 가격(양수화) + 시간으로
- * remove 가 반영되는 경우에 분산 락 고려해야 함 -- 아직 구현 못한 상황 (유의)
+ * StockOrder 객체 관련 정보를 Redis에 반영하는 기능을 관리하는 RedisStockOrderService
+ *
+ * [07.30]
+ * (수정) 매수 주문 생성 시 주식의 수량은 따로 검증하지 않아도 되기 때문에 제외함(차라리 제한 로직을 두는게 더 나을 듯 - 최대 100개만)
+ *
+ * [고민]
+ *
+ *
  */
-
-
 @Service
 @RequiredArgsConstructor
 public class RedisStockOrderService {
@@ -42,7 +45,6 @@ public class RedisStockOrderService {
         try {
             String json = objectMapper.writeValueAsString(dto);
             redisTemplate.opsForZSet().add(getBuyKey(dto.getStockCode()), json, score); // key - value - score 순서
-            System.out.println("pushBuyOrderfinished");
         } catch (JsonProcessingException e) {
             throw new RuntimeException("매수 주문 JSON 직렬화 실패", e);
         }
@@ -71,7 +73,6 @@ public class RedisStockOrderService {
         try {
             String json = objectMapper.writeValueAsString(dto);
             redisTemplate.opsForZSet().add(getSellKey(dto.getStockCode()), json, score);
-            System.out.println("pushSellOrderfinished");
         } catch (JsonProcessingException e) {
             throw new RuntimeException("매도 주문 JSON 직렬화 실패", e);
         }
@@ -119,6 +120,16 @@ public class RedisStockOrderService {
             throw new RuntimeException("매수 주문 JSON 직렬화 실패", e);
         }
 
+    }
+
+    public void removeSellOrder(StockOrderRedisDTO sellStockOrderDTO) {
+        String key = getSellKey(sellStockOrderDTO.getStockCode());
+        try {
+            String json = objectMapper.writeValueAsString(sellStockOrderDTO);
+            redisTemplate.opsForZSet().remove(key, json);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("매도 주문 JSON 직렬화 실패", e);
+        }
     }
 
     public Optional<MatchingPair> popMatchPair(String stockCode) {

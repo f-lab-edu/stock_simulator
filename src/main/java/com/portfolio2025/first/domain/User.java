@@ -1,9 +1,7 @@
 package com.portfolio2025.first.domain;
 
-import com.portfolio2025.first.domain.vo.Money;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
-import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -19,6 +17,14 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/**
+ * 사용자 정보를 관리하는 User
+ * [07.26]
+ * (수정)
+ *
+ * [고민]
+ *
+ */
 @Table(name = "users")
 @Entity
 @Getter

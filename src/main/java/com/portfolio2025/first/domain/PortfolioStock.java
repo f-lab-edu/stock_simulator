@@ -20,8 +20,13 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-/** 구체적인 체결 내역을 관리합니다 **/
-
+/**
+ * 구체적인 체결 내역을 관리하는 PortfolioStock
+ * [07.26]
+ * (수정) addQuantity -> 네이밍 수정 및 내부 메서드 분리 완료
+ *
+ * [고민]
+ */
 @Entity
 @Table(name = "portfolio_stocks")
 @Getter
@@ -32,25 +37,21 @@ public class PortfolioStock {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // 🔗 Portfolio 연관
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "portfolio_id", nullable = false)
-    private Portfolio portfolio;
+    private Portfolio portfolio; // Portfolio 연결
 
-    // 🔗 Stock 연관
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "stock_id", nullable = false)
-    private Stock stock;
+    private Stock stock; // Stock 연관
 
-    // 보유하고 있는 특정 종목의 수량
     @Embedded
     @AttributeOverride(name = "quantityValue", column = @Column(name = "portfolio_quantity", nullable = false))
-    private Quantity portfolioQuantity;
+    private Quantity portfolioQuantity; // 보유하고 있는 특정 종목의 수량
 
-    // 예약 수량 (중복 매도 수량 방지 위함)
     @Embedded
     @AttributeOverride(name = "quantityValue", column = @Column(name = "reserved_quantity", nullable = false))
-    private Quantity reservedQuantity = new Quantity(0L);
+    private Quantity reservedQuantity; // 예약 수량 (중복 매도 수량 방지 위함)
 
     @Embedded
     @AttributeOverride(name = "priceValue", column = @Column(name = "portfolio_average_price", nullable = false))
@@ -65,6 +66,7 @@ public class PortfolioStock {
         this.portfolio = portfolio;
         this.stock = stock;
         this.portfolioQuantity = portfolioQuantity;
+        this.reservedQuantity = new Quantity(0L);
         this.portfolioAveragePrice = portfolioAveragePrice;
         this.lastUpdatedAt = lastUpdatedAt;
     }
@@ -81,25 +83,21 @@ public class PortfolioStock {
                 .build();
     }
 
-    public Money calculateTotalAmount() {
-        return new Money(portfolioQuantity.getQuantityValue() * portfolioAveragePrice.getMoneyValue());
+    public void applyBuy(Quantity addedQuantity, Money executedPrice) {
+        updateAveragePrice(addedQuantity, executedPrice);
+        this.portfolioQuantity = this.portfolioQuantity.plus(addedQuantity);
+        this.lastUpdatedAt = LocalDateTime.now();
     }
 
-
-    public void addQuantity(Quantity addedQuantity, Money executedPrice) {
+    private void updateAveragePrice(Quantity addedQuantity, Money executedPrice) {
         long currentQty = this.portfolioQuantity.getQuantityValue();
         long newQty = addedQuantity.getQuantityValue();
 
-        long totalQty = currentQty + newQty;
+        long currentTotal = this.portfolioAveragePrice.getMoneyValue() * currentQty;
+        long newTotal = executedPrice.getMoneyValue() * newQty;
 
-        long currentAmount = this.portfolioAveragePrice.getMoneyValue() * currentQty;
-        long newAmount = executedPrice.getMoneyValue() * newQty;
-
-        long updatedAvgPrice = (currentAmount + newAmount) / totalQty;
-
-        this.portfolioQuantity = new Quantity(totalQty);
-        this.portfolioAveragePrice = new Money(updatedAvgPrice);
-        this.lastUpdatedAt = LocalDateTime.now();
+        long updatedAverage = (currentTotal + newTotal) / (currentQty + newQty);
+        this.portfolioAveragePrice = new Money(updatedAverage);
     }
 
     public boolean decreaseQuantity(Quantity executed) {

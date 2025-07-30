@@ -14,9 +14,16 @@ import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.support.serializer.JsonSerializer;
-
-// Config 간 순서 있는지 확인해보기
-
+/**
+ * Kafka 이벤트 발행 관련 Config KafkaProducerConfig
+ *
+ * [07.30]
+ * (추가) "invalid.order.created" 토픽 추가
+ *
+ * [고민]
+ *
+ *
+ */
 @Configuration
 public class KafkaProducerConfig {
 
@@ -47,22 +54,16 @@ public class KafkaProducerConfig {
                 .build();
     }
 
-    // 1. OrderCreatedEvent용 KafkaTemplate (Json 직렬화)
+    // 주문 생성 DQL 담당하는 토픽
     @Bean
-    public ProducerFactory<String, OrderCreatedEvent> orderProducerFactory() {
-        Map<String, Object> config = new HashMap<>();
-        config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
-        config.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-        config.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class); // 핵심!
-        return new DefaultKafkaProducerFactory<>(config);
+    public NewTopic invalidOrderCreatedTopic() {
+        return TopicBuilder.name("invalid.order.created")
+                .partitions(2)       // 실패 메시지니까 1개로도 충분 (필요시 확장 가능)
+                .replicas(1)         // 운영에선 2~3 추천
+                .build();
     }
 
-    @Bean
-    public KafkaTemplate<String, OrderCreatedEvent> orderKafkaTemplate() {
-        return new KafkaTemplate<>(orderProducerFactory());
-    }
-
-    // 2. String 전용 KafkaTemplate
+    // String 전용 KafkaTemplate
     @Bean
     public ProducerFactory<String, String> stringProducerFactory() {
         Map<String, Object> config = new HashMap<>();

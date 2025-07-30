@@ -29,6 +29,7 @@ import lombok.NoArgsConstructor;
  *
  * [07.26]
  * (수정) releaseAndDeductCash 내 차감은 진행하지 않음, 추가로 naming 수정함
+ * (수정) 객체 생성 시 필요없는 인자 부분 제외
  *
  * [고민]
  * 1. 매수 주문을 넣을 때 실제 사용 금액을 차감하고 진행할지 혹은 체결되고 난 이후에 차감을 해야 하는지를 고민함.
@@ -108,7 +109,7 @@ public class Portfolio {
         }
     }
 
-    public void reserveCash(Money amount) {
+    public void reserveAndDeductCash(Money amount) {
         validateSufficientCash(amount);
         this.availableCash = this.availableCash.minus(amount);
         this.reservedCash = this.reservedCash.plus(amount);

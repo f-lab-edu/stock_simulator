@@ -32,7 +32,7 @@ import lombok.NoArgsConstructor;
 /**
  * 매수 Or 매도 주문 StockOrder의 상위 정보를 관리하는 Order
  * [07.26]
- * (수정)
+ * (수정) createSingleOrder -> BuyOrder 네이밍 수정함
  *
  * [고민]
  * 1. CREATED, PROCESSING 상태를 명확하게 구분할 수 있어야 함
@@ -88,8 +88,8 @@ public class Order {
         this.updatedAt = LocalDateTime.now();
     }
 
-    public static Order createSingleBuyOrder(Portfolio portfolio, StockOrder stockOrder, OrderType orderType,
-                                             Money totalPrice) {
+    public static Order createSingleOrder(Portfolio portfolio, StockOrder stockOrder, OrderType orderType,
+                                          Money totalPrice) {
         Order createdOrder = Order.builder()
                 .user(portfolio.getUser())
                 .orderType(orderType) // 매도, 매수

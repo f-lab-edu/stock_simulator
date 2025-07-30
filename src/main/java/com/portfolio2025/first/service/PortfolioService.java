@@ -12,6 +12,16 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 매수, 매도 주문 생성을 담당하는 StockOrderService
+ *
+ * [07.30]
+ * (수정)
+ *
+ * [고민]
+ * 1. DTO 생성 중복 로직이 많이 발생하는 상황
+ * 2. Transaction 범위 추가로 Redisson 락 혹은 DB 락을 어떻게 적절하게 배정할 수 있는지 고민하기
+ */
 @Service
 @RequiredArgsConstructor
 public class PortfolioService {
@@ -31,7 +41,7 @@ public class PortfolioService {
         User user = userRepository.findByIdForUpdate(userId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자 정보가 없습니다."));
 
-        Portfolio portfolio = Portfolio.createPortfolio(user, portfolioType, LocalDateTime.now());
+        Portfolio portfolio = Portfolio.createPortfolio(user, portfolioType);
         return portfolioRepository.save(portfolio);
     }
 

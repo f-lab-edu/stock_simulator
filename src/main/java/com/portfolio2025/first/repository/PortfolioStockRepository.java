@@ -7,5 +7,5 @@ import java.util.Optional;
 
 public interface PortfolioStockRepository extends BaseRepository<PortfolioStock, Long> {
     // 추가 기능
-    Optional<PortfolioStock> findByPortfolioAndStock(Portfolio portfolio, Stock stock);
+    Optional<PortfolioStock> findByPortfolioAndStockWithLock(Portfolio portfolio, Stock stock);
 }

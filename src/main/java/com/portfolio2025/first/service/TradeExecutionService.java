@@ -1,7 +1,7 @@
 package com.portfolio2025.first.service;
 
-import com.portfolio2025.first.domain.MatchingContext;
-import com.portfolio2025.first.domain.MatchingPair;
+import com.portfolio2025.first.dto.MatchingContext;
+import com.portfolio2025.first.dto.MatchingPair;
 import com.portfolio2025.first.domain.Portfolio;
 import com.portfolio2025.first.domain.PortfolioStock;
 import com.portfolio2025.first.domain.Trade;
@@ -52,9 +52,6 @@ public class TradeExecutionService {
             // 4. 체결 이력 저장 -> Trade 관련 UNIQUE 제약 반영 완료 + 이벤트 발행까지
             saveTradeAndPublishEvent(context, pair);
 
-            // 5. Redis 동기화 -> (수정 해보기) Redis 상태 변경을 DB 커밋 후 실행하도록 분리 - TradeRedisSyncListener
-//            syncRedisAfterExecution(pair, context.getExecutableQuantity());
-
         } catch (EntityNotFoundException | IllegalStateException e) {
             throw new NonRetryableMatchException(e.getMessage()); // 구조적 문제
         } catch (RedisConnectionException | DataAccessException e) {
@@ -94,12 +91,12 @@ public class TradeExecutionService {
         StockOrder buyOrder = ctx.getBuyOrder();
         StockOrder sellOrder = ctx.getSellOrder();
 
-        buyOrder.updateQuantity(ctx.getExecutableQuantity(), ctx.getExecutablePrice());
-        sellOrder.updateQuantity(ctx.getExecutableQuantity(), ctx.getExecutablePrice());
+        buyOrder.applyExecution(ctx.getExecutableQuantity(), ctx.getExecutablePrice());
+        sellOrder.applyExecution(ctx.getExecutableQuantity(), ctx.getExecutablePrice());
 
         // ✅ 상위 Order 상태도 업데이트
-        buyOrder.getOrder().aggregateStatusFromChildren();
-        sellOrder.getOrder().aggregateStatusFromChildren();
+        buyOrder.getOrder().aggregateStatusFromStockOrders();
+        sellOrder.getOrder().aggregateStatusFromStockOrders();
     }
 
     private void saveTradeAndPublishEvent(MatchingContext ctx, MatchingPair pair) {
@@ -146,17 +143,17 @@ public class TradeExecutionService {
         // 1. 총 체결 금액 계산 = price * quantity
         Money totalCost = price.multiply(quantity);
 
-        // 2. 주문 등록 시점에 예약된 금액 실제 차감 진행
-        buyer.releaseAndDeductCash(totalCost);
+        // 2. 주문 등록 시점에 예약된 금액 실제 차감 진행 (차감을 미리 매수 주문 넣을 때 진행했기에 차감은 진행하지 않음)
+        buyer.cancelReservedCash(totalCost);
 
         // 3. 기존 보유 주식 조회
         Optional<PortfolioStock> maybePortfolioStock =
-                portfolioStockRepository.findByPortfolioAndStock(buyer, stock);
+                portfolioStockRepository.findByPortfolioAndStockWithLock(buyer, stock);
 
         if (maybePortfolioStock.isPresent()) {
             // 기존 보유 주식이 있을 경우 수량 + 평균 단가 갱신
             PortfolioStock portfolioStock = maybePortfolioStock.get();
-            portfolioStock.addQuantity(quantity, price);
+            portfolioStock.applyBuy(quantity, price);
         } else {
             PortfolioStock newStock = PortfolioStock.createPortfolioStock(buyer, stock, quantity, price);
             portfolioStockRepository.save(newStock);
@@ -172,7 +169,7 @@ public class TradeExecutionService {
 
         // 3. 포트폴리오에서 주식 차감
         Optional<PortfolioStock> maybePortfolioStock =
-                portfolioStockRepository.findByPortfolioAndStock(seller, stock);
+                portfolioStockRepository.findByPortfolioAndStockWithLock(seller, stock);
 
         if (maybePortfolioStock.isPresent()) {
             PortfolioStock portfolioStock = maybePortfolioStock.get();
@@ -186,21 +183,4 @@ public class TradeExecutionService {
         }
     }
 
-    // old
-//    private void syncRedisAfterExecution(MatchingPair pair, Quantity executableQuantity) {
-//        // 체결 수량에 따라 기존의 pair 정보를 수정한다
-//        MatchingPair updatedPair = afterExecution(pair, executableQuantity);
-//        StockOrderRedisDTO sellDTO = updatedPair.getSellDTO();
-//        StockOrderRedisDTO buyDTO = updatedPair.getBuyDTO();
-//
-//        // remainQuantity()가 0보다 큰 경우 반영, 그렇지 않다면 반영하지 않음
-//        if (sellDTO.hasQuantity()) {
-//            redisStockOrderService.pushSellOrderDTO(sellDTO);
-//        }
-//
-//        if (buyDTO.hasQuantity()) {
-//            redisStockOrderService.pushBuyOrderDTO(buyDTO);
-//        }
-//
-//    }
 }

@@ -52,17 +52,6 @@ public class PortfolioRepositoryImpl extends BaseRepositoryImpl<Portfolio, Long>
         return result.stream().findFirst();
     }
 
-//    public boolean existsByUserIdAndPortfolioType(Long userId, PortfolioType portfolioType) {
-//        String jpql = "SELECT 1 FROM Portfolio p WHERE p.user.id = :userId AND p.portfolioType = :type";
-//
-//        List<Integer> result = em.createQuery(jpql, Integer.class)
-//                .setParameter("userId", userId)
-//                .setParameter("type", portfolioType)
-//                .setMaxResults(1)
-//                .getResultList();
-//
-//        return !result.isEmpty();
-//    }
 
     @Override
     public boolean existsByUserIdAndPortfolioType(Long userId, PortfolioType portfolioType) {
@@ -74,5 +63,26 @@ public class PortfolioRepositoryImpl extends BaseRepositoryImpl<Portfolio, Long>
                 .getSingleResult();
 
         return count > 0;
+    }
+
+    @Override
+    public Optional<Portfolio> findByUserIdAndPortfolioTypeWithLock(Long userId, PortfolioType portfolioType) {
+        String jpql = "SELECT p FROM Portfolio p WHERE p.user.id = :userId AND p.portfolioType = :type";
+
+        List<Portfolio> result = em.createQuery(jpql, Portfolio.class)
+                .setParameter("userId", userId)
+                .setParameter("type", portfolioType)
+                .setLockMode(LockModeType.PESSIMISTIC_WRITE)
+                .getResultList();
+
+        return result.stream().findFirst();
+    }
+
+    @Override
+    public Portfolio saveAndFlush(Portfolio portfolio) {
+        em.persist(portfolio);
+        em.flush();
+
+        return portfolio;
     }
 }

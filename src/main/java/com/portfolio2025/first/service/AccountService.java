@@ -19,8 +19,6 @@ import org.springframework.transaction.annotation.Transactional;
  * 계좌 관련 로직
  *
  */
-
-
 @Service
 @RequiredArgsConstructor
 public class AccountService {
@@ -46,7 +44,8 @@ public class AccountService {
     public Account createAccount(Long userId, CreateAccountRequestDTO requestDTO) {
         User user = userRepository.findByIdForUpdate(userId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자 정보가 없습니다."));
-        validateAccountCreateInput(user, requestDTO); // 검증 위치는 계속해서 생각하기
+        // DTO에 대한 검증인데 이 부분은 어디에서 할지는 더 생각해봐야 함
+        validateAccountCreateInput(user, requestDTO);
 
         return accountRepository.save(Account.createAccount(user, requestDTO.getBankName(),
                 requestDTO.getAccountNumber(), requestDTO.getUserName()));

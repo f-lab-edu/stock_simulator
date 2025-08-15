@@ -17,6 +17,14 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/**
+ * 계좌 정보를 관리하는 Account
+ * [07.26]
+ * (수정)
+ *
+ * [고민]
+ *
+ */
 @Entity
 @Table(name = "accounts")
 @Getter

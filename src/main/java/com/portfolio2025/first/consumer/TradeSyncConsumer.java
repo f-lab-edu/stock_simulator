@@ -18,8 +18,7 @@ public class TradeSyncConsumer {
 
     @KafkaListener(
             topics = "trade.synced",
-            groupId = "redis-sync",
-            containerFactory = "stringKafkaListenerContainerFactory"
+            groupId = "redis-sync"
     )
     public void consumeTradeSynced(String message, Acknowledgment ack) {
         try {

@@ -2,9 +2,10 @@ package com.portfolio2025.first.service;
 
 import static jodd.util.ThreadUtil.sleep;
 
-import com.portfolio2025.first.domain.MatchingPair;
+import com.portfolio2025.first.dto.MatchingPair;
 import com.portfolio2025.first.exception.NonRetryableMatchException;
 import com.portfolio2025.first.exception.RetryableMatchException;
+import com.portfolio2025.first.service.dlq.MatchDlqPublisher;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +24,10 @@ import org.springframework.stereotype.Service;
  * 3. 다시 push 혹은 실패한 요청 재시도 하는 상황에 대해서 어떻게 처리할지 - idempotency 고려할 수 있어야 함 (완)
  * 4. 무한루프이기 때문에 retry 관련 제한을 반영할 수 있어야 한다 (완) - Controller 기반에서 하는건지 아니면 Service 내에서 진행하면 되는건지??
  * 5. Redis 반영 역시 이벤트 발행으로 - TransactionalListenerEvent(phase = AFTER_COMMIT) 방식 활용 예정
+ *
+ *
+ * ----- 수정하기 -----
+ *
  */
 
 @Service
@@ -32,82 +37,67 @@ public class TradeService {
 
     private final RedisStockOrderService redisStockOrderService;
     private final TradeExecutionService tradeExecutionService;
+    private final MatchDlqPublisher matchDlqPublisher;
 
-    // Redisson 분산 락 적용하기
-    private final RedissonClient redissonClient;
-    // match 실행 하기 전 Lock 획득 여부부터 먼저 확인하기 - 외부에서 먼저 획득한 이후에 Transaction 진행해야 함
-    public void matchWithLock(String stockCode) {
-        String lockKey = "lock:match:" + stockCode;
-        RLock lock = redissonClient.getLock(lockKey);
-        boolean isLocked = false;
+    private static final int MAX_RETRY = 10;
 
-        try {
-            // 3초 동안 시도, 10초 후 자동 해제
-            isLocked = lock.tryLock(3, 10, TimeUnit.SECONDS);
-            if (!isLocked) {
-                log.warn("[LOCK] lock 획득 실패 - stockCode: {}", stockCode);
-                return;
-            }
-
-            log.info("[LOCK] lock 획득 성공 - stockCode: {}", stockCode);
-            match(stockCode); // 기존 match 로직 호출
-
-        } catch (InterruptedException e) {
-            log.error("[LOCK] 락 획득 중 인터럽트 발생 - {}", e.getMessage(), e);
-            Thread.currentThread().interrupt(); // 인터럽트 복구
-
-        } catch (Exception e) {
-            log.error("[LOCK] match 실행 중 예외 발생 - {}", e.getMessage(), e);
-
-        } finally {
-            if (isLocked && lock.isHeldByCurrentThread()) {
-                lock.unlock();
-                log.info("[LOCK] 락 해제 완료 - stockCode: {}", stockCode);
-            }
-        }
-    }
-
-    /** 체결 상황에 대해서 (핵심 로직) **/
-    public void match(String stockCode) {
-        final int MAX_RETRY = 10;
+    public void matchWithRetries(String stockCode) {
         int retryCount = 0;
 
         while (retryCount < MAX_RETRY) {
-            // 1. 매칭 후보지 확인하기
-            Optional<MatchingPair> pairCandidate = redisStockOrderService.popMatchPair(stockCode);
-            if (pairCandidate.isEmpty()) {
-                System.out.println("pairCandidate not found..");
+            Optional<MatchingPair> maybePair = redisStockOrderService.popMatchPair(stockCode);
+            if (maybePair.isEmpty()) {
+                log.info("❗ 매칭 대상 없음 - stockCode: {}", stockCode);
                 break;
             }
 
-            MatchingPair pair = pairCandidate.get();
+            MatchingPair pair = maybePair.get();
             if (pair.isNotPriceMatchable()) {
                 redisStockOrderService.pushBack(pair);
+                log.info("❗ 가격 조건 불일치 - 재삽입 완료: {}", stockCode);
                 break;
             }
 
             try {
-                tradeExecutionService.matchSinglePair(pair);  // 한 건씩 트랜잭션 처리 -> AOP에 맞게 외부 Service 등록
+                tradeExecutionService.matchSinglePair(pair);
             } catch (RetryableMatchException e) {
-                retryCount++;
-                log.warn("재시도 가능한 예외 발생 ({}회): {}", retryCount, e.getMessage());
-                redisStockOrderService.pushBack(pair);
-                sleep(100);
+                retryCount = handleRetryable(pair, retryCount, e);
             } catch (NonRetryableMatchException e) {
-                log.error("재시도 불필요 예외 발생: {}", e.getMessage());
+                handleNonRetryable(pair, e);
+                break;
             } catch (Exception e) {
-                retryCount++;
-                log.error("기타 예외 발생 ({}회): {}", retryCount, e.getMessage(), e);
-                redisStockOrderService.pushBack(pair);  // 기본은 재시도 대상으로 처리
-                sleep(100);
+                retryCount = handleUnknown(pair, retryCount, e);
             }
         }
 
         if (retryCount >= MAX_RETRY) {
-            log.error("[Match] 최대 재시도 초과 - stockCode: {}", stockCode);
-            // TODO: 필요시 실패 이벤트 발행 or DLQ
+            log.error("🚨 최대 재시도 초과 - stockCode: {}", stockCode);
+            matchDlqPublisher.publishProcessingError("match.request", formatDlqMessage(stockCode, null), new RuntimeException("MAX_RETRY_EXCEEDED"));
         }
-
     }
 
+    private int handleRetryable(MatchingPair pair, int retryCount, Exception e) {
+        retryCount++;
+        log.warn("🔁 Retryable 예외 ({}회): {}", retryCount, e.getMessage());
+        redisStockOrderService.pushBack(pair);
+        sleep(100);
+        return retryCount;
+    }
+
+    private void handleNonRetryable(MatchingPair pair, Exception e) {
+        log.error("❌ Non-Retryable 예외 발생: {}", e.getMessage());
+        matchDlqPublisher.publishProcessingError("match.request", formatDlqMessage(null, pair), e);
+    }
+
+    private int handleUnknown(MatchingPair pair, int retryCount, Exception e) {
+        retryCount++;
+        log.error("❌ 기타 예외 발생 ({}회): {}", retryCount, e.getMessage(), e);
+        redisStockOrderService.pushBack(pair);
+        sleep(100);
+        return retryCount;
+    }
+
+    private String formatDlqMessage(String stockCode, MatchingPair pair) {
+        return (pair != null) ? pair.toString() : ("stockCode=" + stockCode);
+    }
 }

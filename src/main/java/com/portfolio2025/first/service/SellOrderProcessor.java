@@ -24,7 +24,7 @@ public class SellOrderProcessor implements StockOrderProcessor {
     @Override
     public void reserve(Portfolio portfolio, Stock stock, Quantity quantity, Money totalPrice) {
         PortfolioStock portfolioStock = portfolioStockRepository
-                .findByPortfolioAndStock(portfolio, stock)
+                .findByPortfolioAndStockWithLock(portfolio, stock)
                 .orElseThrow(() -> new IllegalStateException("보유한 주식이 없습니다."));
         portfolioStock.reserve(quantity);
     }
@@ -33,7 +33,7 @@ public class SellOrderProcessor implements StockOrderProcessor {
     public Order createOrder(Portfolio portfolio, Stock stock, Quantity quantity, Money unitPrice) {
         StockOrder stockOrder = StockOrder.createStockOrder(stock, quantity, unitPrice, portfolio);
         Money totalPrice = unitPrice.multiply(quantity);
-        return Order.createSingleBuyOrder(portfolio, stockOrder, OrderType.SELL, totalPrice);
+        return Order.createSingleOrder(portfolio, stockOrder, OrderType.SELL, totalPrice);
     }
 
     @Override

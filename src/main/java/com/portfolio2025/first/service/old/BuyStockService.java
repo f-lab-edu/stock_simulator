@@ -58,9 +58,9 @@ public class BuyStockService {
         Money totalPrice = calculateTotalPrice(dto);
 
         // 유통량과 비교(Stock과 비교 진행함)
-        stock.reserve(quantity);
+        stock.assertReservable(quantity);
         // availableCash, reservedCash update(사용 가능한 금액은 차감, 예약 금액은 상승)
-        portfolio.reserveCash(totalPrice);
+        portfolio.reserveAndDeductCash(totalPrice);
 
         // 3. Order 및 StockOrder 생성 및 저장
         Order order = createBuyOrder(portfolio, stock, quantity, unitPrice);
@@ -84,47 +84,6 @@ public class BuyStockService {
     private Portfolio getDefaultPortfolio(User user) {
         return user.getDefaultPortfolio()
                 .orElseThrow(() -> new IllegalArgumentException("투자용 포트폴리오가 존재하지 않습니다."));
-    }
-
-    /** 단일 매수 주문 전체 로직 **/
-    @Transactional
-    public void placeBulkBuyOrder(List<StockOrderRequestDTO> stockOrderRequestDTOList) {
-        // List<> 형식의 검증은 DTO 내에서 한번에 처리 불가해서 따로 한번 더 처리함 - Controller 에서 받을 떄 진행하기
-        /******* 수정해야 하는 메서드 ******/
-        validateDTOs(stockOrderRequestDTOList);
-
-        // 1. User ID 통일성 검증 (다른 유저 ID 섞이면 예외)
-        Long firstUserId = stockOrderRequestDTOList.getFirst().getUserId();
-        validateIfSameUser(stockOrderRequestDTOList, firstUserId);
-
-        // 2. 유저 조회 (Lock)
-        User user = findUserWithLock(firstUserId);
-        Portfolio portfolio = getDefaultPortfolio(user);
-
-        // 💡 stockOrder 생성
-        List<StockOrder> stockOrders = stockOrderRequestDTOList.stream()
-                .map(dto -> {
-                    Stock stock = findStockByStockCode(dto.getStockCode());
-
-                    Quantity quantity = new Quantity(dto.getRequestedQuantity());
-                    Money orderPrice = new Money(dto.getRequestedPrice() * dto.getRequestedQuantity());
-
-                    // 주문 수량 예약
-                    stock.reserve(quantity);
-                    return StockOrder.createStockOrder(stock, quantity, orderPrice, portfolio);
-                })
-                .toList();
-
-        Money totalPrice = calculateTotalPrice(stockOrders);
-        Quantity totalQuantity = calculateTotalQuantity(stockOrders);
-
-        portfolio.buy(totalPrice, totalQuantity);
-        createAndSaveBulkBuyOrder(portfolio, stockOrders, OrderType.BUY, totalPrice);
-    }
-
-    private void createAndSaveBulkBuyOrder(Portfolio portfolio, List<StockOrder> stockOrders,
-                                           OrderType orderType, Money totalPrice) {
-        orderRepository.save(Order.createBulkBuyOrder(portfolio, stockOrders, orderType, totalPrice));
     }
 
     // Method 구조 생각해보기
@@ -170,7 +129,7 @@ public class BuyStockService {
     private Order createBuyOrder(Portfolio portfolio, Stock stock, Quantity quantity, Money unitPrice) {
         StockOrder stockOrder = StockOrder.createStockOrder(stock, quantity, unitPrice, portfolio);
         Money totalPrice = unitPrice.multiply(quantity);
-        return Order.createSingleBuyOrder(portfolio, stockOrder, OrderType.BUY, totalPrice);
+        return Order.createSingleOrder(portfolio, stockOrder, OrderType.BUY, totalPrice);
     }
 
     /** 단일 매수 주문 저장합니다 **/
@@ -180,7 +139,7 @@ public class BuyStockService {
         StockOrder stockOrder = StockOrder.createStockOrder(stock, totalQuantity, requestedPrice, portfolio);
         // totalPrice 구해야 함
         Money totalPrice = requestedPrice.multiply(totalQuantity);
-        Order order = Order.createSingleBuyOrder(portfolio, stockOrder, OrderType.BUY, totalPrice);
+        Order order = Order.createSingleOrder(portfolio, stockOrder, OrderType.BUY, totalPrice);
 
         return orderRepository.save(order);
     }

@@ -23,11 +23,13 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * 중복 저장을 방지하기 위해서(데이터 정합성)을 위해서 DB 차원의 추가적인 제약 조건을 활용
+ * 체결 이력을 관리하는 Trade
+ * [07.26]
+ * (수정)
+ *
+ * [고민]
  *
  */
-
-
 @Entity
 @Getter
 @NoArgsConstructor
@@ -62,7 +64,7 @@ public class Trade {
 
     private LocalDateTime tradedAt; // 체결 주문의 체결 시간
     private LocalDateTime createdAt; // DB 저장하는 시간
-    private LocalDateTime updatedAt; // 수정 시각
+    private LocalDateTime lastUpdatedAt; // 수정 시각
 
     @Builder
     private Trade(StockOrder buyOrder, StockOrder sellOrder, Stock stock, Money tradePrice,
@@ -73,7 +75,7 @@ public class Trade {
         this.tradePrice = tradePrice;
         this.tradeQuantity = tradeQuantity;
         this.tradedAt = tradedAt;
-        this.updatedAt = tradedAt;
+        this.lastUpdatedAt = tradedAt;
     }
 
     public static Trade createTrade(StockOrder buyOrder, StockOrder sellOrder, Stock stock, Money tradePrice,
@@ -92,14 +94,14 @@ public class Trade {
         return trade;
     }
 
-    @PrePersist // ??
+    @PrePersist // insert 전에 자동 실행
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
         this.tradedAt = this.createdAt; // 최초 체결 시각
     }
 
-    @PreUpdate // ??
+    @PreUpdate // update 전 자동 실행
     protected void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
+        this.lastUpdatedAt = LocalDateTime.now();
     }
 }

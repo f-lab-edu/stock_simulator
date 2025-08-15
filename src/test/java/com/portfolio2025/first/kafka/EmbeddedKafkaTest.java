@@ -88,7 +88,7 @@ public class EmbeddedKafkaTest {
         // 1000만원 자동 생성된 상황
         accountA = accountService.createAccount(userA.getId(), dtoA);
         // 유저에게 포트폴리오 생성
-        portfolioRepository.save(Portfolio.createPortfolio(userA, PortfolioType.STOCK, LocalDateTime.now()));
+        portfolioRepository.save(Portfolio.createPortfolio(userA, PortfolioType.STOCK));
         buyPortfolio = portfolioRepository.findByUserIdAndPortfolioType(userA.getId(), PortfolioType.STOCK)
                 .orElseThrow();
         // 계좌에서 400만원 인출, 투자금 400만원인 상황 (userA - 투자금 400만원)
@@ -105,7 +105,7 @@ public class EmbeddedKafkaTest {
         // 1000만원 자동 생성된 상황
         accountB = accountService.createAccount(userB.getId(), dtoB);
         // 유저에게 포트폴리오 생성
-        portfolioRepository.save(Portfolio.createPortfolio(userB, PortfolioType.STOCK, LocalDateTime.now()));
+        portfolioRepository.save(Portfolio.createPortfolio(userB, PortfolioType.STOCK));
         sellPortfolio = portfolioRepository.findByUserIdAndPortfolioType(userB.getId(), PortfolioType.STOCK)
                 .orElseThrow();
         // 계좌에서 500만원 인출, 투자금 500만원인 상황 (userB - 투자금 500만원)

@@ -57,7 +57,7 @@ public class TestOrderController {
         userA = userRepository.save(User.createUser("sunghun", "suwon", "010-1234-5678", "test@email.com", "pw"));
         CreateAccountRequestDTO dtoA = new CreateAccountRequestDTO("kookmin", "111111-22-333333", "sunghun");
         accountService.createAccount(userA.getId(), dtoA);
-        portfolioRepository.save(Portfolio.createPortfolio(userA, PortfolioType.STOCK, LocalDateTime.now()));
+        portfolioRepository.save(Portfolio.createPortfolio(userA, PortfolioType.STOCK));
         buyPortfolio = portfolioRepository.findByUserIdAndPortfolioType(userA.getId(), PortfolioType.STOCK).orElseThrow();
         accountService.transferFromAccountToPortfolio(userA.getId(),
                 new TransferToPortfolioRequestDTO("111111-22-333333", buyPortfolio.getId(), 4_000_000L));
@@ -66,7 +66,7 @@ public class TestOrderController {
         userB = userRepository.save(User.createUser("sungsung", "seoul", "010-5678-0000", "test@naver.com", "pw12345"));
         CreateAccountRequestDTO dtoB = new CreateAccountRequestDTO("sinhan", "444444-55-666666", "sungsung");
         accountService.createAccount(userB.getId(), dtoB);
-        portfolioRepository.save(Portfolio.createPortfolio(userB, PortfolioType.STOCK, LocalDateTime.now()));
+        portfolioRepository.save(Portfolio.createPortfolio(userB, PortfolioType.STOCK));
         sellPortfolio = portfolioRepository.findByUserIdAndPortfolioType(userB.getId(), PortfolioType.STOCK).orElseThrow();
         accountService.transferFromAccountToPortfolio(userB.getId(),
                 new TransferToPortfolioRequestDTO("444444-55-666666", sellPortfolio.getId(), 5_000_000L));
@@ -86,8 +86,6 @@ public class TestOrderController {
 
         // Redis 초기화
         redisTemplate.getConnectionFactory().getConnection().flushAll();
-
-
 
         initialized = true;
     }

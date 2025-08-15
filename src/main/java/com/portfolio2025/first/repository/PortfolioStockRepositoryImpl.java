@@ -17,7 +17,7 @@ public class PortfolioStockRepositoryImpl extends BaseRepositoryImpl <PortfolioS
 
     // PESSIMISTIC_WRITE - DB 락 반영함
     @Override
-    public Optional<PortfolioStock> findByPortfolioAndStock(Portfolio portfolio, Stock stock) {
+    public Optional<PortfolioStock> findByPortfolioAndStockWithLock(Portfolio portfolio, Stock stock) {
         String jqpl = "select ps from PortfolioStock ps where "
                 + "ps.portfolio = :portfolio and ps.stock = :stock";
 

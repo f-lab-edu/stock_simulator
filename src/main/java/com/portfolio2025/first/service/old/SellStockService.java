@@ -57,14 +57,14 @@ public class SellStockService {
 
         // 2. 보유 주식 수량 검증 (예약 방식)
         PortfolioStock portfolioStock = portfolioStockRepository
-                .findByPortfolioAndStock(portfolio, stock)
+                .findByPortfolioAndStockWithLock(portfolio, stock)
                 .orElseThrow(() -> new IllegalStateException("보유한 주식이 없습니다."));
 
         reserveWithValidation(quantity, portfolioStock);
 
         // 3. 주문 객체 생성
         StockOrder stockOrder = StockOrder.createStockOrder(stock, quantity, requestedPrice, portfolio);
-        Order order = Order.createSingleBuyOrder(portfolio, stockOrder, OrderType.SELL, totalPrice);
+        Order order = Order.createSingleOrder(portfolio, stockOrder, OrderType.SELL, totalPrice);
         orderRepository.save(order);
 
         // +@ DB 반영해주기

@@ -7,6 +7,15 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/**
+ * 거래 단위(돈) Money
+ * [07.26]
+ * (수정) requireNonNull 메서드 추가(null-checking 담당하는 메서드 추출)
+ * (추가) Comparable - compareTo 메서드 구현
+ *
+ * [고민]
+ *
+ */
 @Embeddable
 @Getter
 @EqualsAndHashCode
@@ -22,21 +31,23 @@ public class Money {
     }
 
     public Money plus(Money other) {
-        if (other == null) {
-            throw new IllegalArgumentException("인자를 확인해주세요.");
-        }
+        requireNonNull(other);
         return new Money(this.moneyValue + other.moneyValue);
     }
 
     public Money minus(Money other) {
-        if (other == null) {
-            throw new IllegalArgumentException("인자를 확인해주세요.");
-        }
+        requireNonNull(other);
 
         if (isLowerThan(other)) {
             throw new IllegalArgumentException("잔액이 부족합니다");
         }
         return new Money(this.moneyValue - other.moneyValue);
+    }
+
+    private void requireNonNull(Money other) {
+        if (other == null) {
+            throw new IllegalArgumentException("인자를 확인해주세요.");
+        }
     }
 
     public boolean isLowerThan(Money money) {
@@ -47,13 +58,16 @@ public class Money {
         return (this.moneyValue > money.moneyValue);
     }
 
+    public Money multiply(Quantity quantity) {
+        return new Money(moneyValue * quantity.getQuantityValue());
+    }
+
+    public int compareTo(Money other) {
+        return this.moneyValue.compareTo(other.moneyValue);
+    }
 
     @Override
     public String toString() {
         return String.valueOf(moneyValue);
-    }
-
-    public Money multiply(Quantity quantity) {
-        return new Money(moneyValue * quantity.getQuantityValue());
     }
 }

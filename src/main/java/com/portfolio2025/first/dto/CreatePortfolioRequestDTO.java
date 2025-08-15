@@ -14,5 +14,4 @@ import lombok.Setter;
 @AllArgsConstructor
 public class CreatePortfolioRequestDTO {
     private PortfolioType portfolioType;
-
 }

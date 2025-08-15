@@ -8,18 +8,22 @@ import com.portfolio2025.first.dto.CreateAccountRequestDTO;
 import com.portfolio2025.first.repository.AccountRepository;
 import com.portfolio2025.first.repository.UserRepository;
 import com.portfolio2025.first.service.AccountService;
+import com.portfolio2025.first.support.IntegrationTestSupport;
+import javax.sql.DataSource;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.datasource.DataSourceUtils;
+import org.springframework.test.annotation.Rollback;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 실제 MySQL을 실행시킨 상황에서 진행하는 방식임
+ * [테스트] 계좌 생성 관련 테스트
+ * -> 문제가 발생할 수 있는 상황은???
+ * 1. 사용자 생성 중복 요청을 시도하는 경우
+ * 2. DTO 누락이 발생한 경우
  */
-
-@SpringBootTest  // 스프링 전체 빈 로딩 (실제 MySQL 통합해서 진행)
-@Transactional   // 테스트 끝나면 자동 롤백 (DB 깨끗하게 유지)
-class AccountServiceIntegrationTest {
+class AccountServiceIntegrationTest extends IntegrationTestSupport {
 
     @Autowired
     private AccountService accountService;
@@ -30,34 +34,48 @@ class AccountServiceIntegrationTest {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    DataSource dataSource;
+
+    @BeforeEach
+    void cleanDB() throws Exception {
+        var conn = DataSourceUtils.getConnection(dataSource);
+        try (var st = conn.createStatement()) {
+            st.execute("SET FOREIGN_KEY_CHECKS=0");
+            for (String t : new String[]{
+                    "accounts","users","orders","trade","portfolios","portfolio_stocks"
+            }) st.execute("TRUNCATE TABLE " + t);
+            st.execute("SET FOREIGN_KEY_CHECKS=1");
+        } finally {
+            DataSourceUtils.releaseConnection(conn, dataSource);
+        }
+    }
+
     @Test
+    @Transactional
+    @Rollback(value = false)
     void 계좌생성_성공_DB() {
         // given
         User user = User.builder()
-                .name("홍길동")
-                .location("서울")
-                .phoneNumber("010-1234-5678")
-                .email("hong@test.com")
                 .userId("user123")
+                .name("Hong Gil Dong")
+                .email("hong@test.com")
+                .location("Suwon")
+                .phoneNumber("010-1234-5678")
                 .build();
-        userRepository.save(user);  // ✅ 진짜 DB에 저장됨
+        userRepository.save(user);
 
-        String bankName = "신한은행";
-        String accountNumber = "111-222-333";
-        String userName = "홍길동";
-
-        CreateAccountRequestDTO createAccountRequestDTO = new CreateAccountRequestDTO(bankName, accountNumber,
-                userName);
+        CreateAccountRequestDTO req =
+                new CreateAccountRequestDTO("신한은행", "444-555-666666", "홍길동");
 
         // when
-        Account savedAccount = accountService.createAccount(user.getId(), createAccountRequestDTO);
-
+        Account saved = accountService.createAccount(user.getId(), req);
         // then
-        Account foundAccount = accountRepository.findById(savedAccount.getId()).orElseThrow();
+        Account found = accountRepository.findById(saved.getId()).orElseThrow();
 
-        assertThat(foundAccount.getUser().getId()).isEqualTo(user.getId());
-        assertThat(foundAccount.getBankName()).isEqualTo(bankName);
-        assertThat(foundAccount.getAccountNumber()).isEqualTo(accountNumber);
-        assertThat(foundAccount.getUserName()).isEqualTo(userName);
+        assertThat(found.getUser().getId()).isEqualTo(user.getId());
+        assertThat(found.getBankName()).isEqualTo("신한은행");
+        assertThat(found.getAccountNumber()).isEqualTo("444-555-666666");
+        assertThat(found.getUserName()).isEqualTo("홍길동");
     }
 }

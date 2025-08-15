@@ -37,8 +37,7 @@ public class InvestmentPreparationTest {
         // 3️⃣ Portfolio 생성
         Portfolio portfolio = Portfolio.createPortfolio(
                 user,
-                PortfolioType.STOCK,
-                LocalDateTime.now()
+                PortfolioType.STOCK
         );
 
         assertThat(portfolio.getAvailableCash().getMoneyValue()).isEqualTo(0L);
